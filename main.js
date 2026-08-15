@@ -353,7 +353,7 @@ class Enemy {
         this.nextShootTime = 0;
         this.wavesFired = 0;
 
-        this.state = 'patrolling' //patrolling, attacking, shooting
+        this.state = 'shooting' //patrolling, attacking, shooting
 
         this.width = 50;
         this.height = 50;
@@ -398,10 +398,11 @@ class Enemy {
 
         this.updateRangeChecks();
 
-        if (this.state === 'patrolling' && this.type === 'normal') this.updatePatrolling();
         if (this.state === 'attacking') this.updateAttacking();
         if (this.state === 'shooting') this.updateShooting();
+        if (this.state === 'patrolling' && this.type === 'normal') this.updatePatrolling();
 
+        console.log(this.state)
         // //check if player is in moving range
         // if (Math.abs(this.dx) <= this.range && Math.abs(this.dy) <= this.range) {
         //     this.inRange = true;
@@ -532,6 +533,7 @@ class Enemy {
         if (this.wavesFired >= this.bulletWaves) {
             this.wavesFired = 0;
             this.nextShootTime = performance.now() + this.shootInterval;
+            this.state = 'patrolling'
         }
         //if bulletInterval <= performance.(), shoot bulletAmount bullets.
         //set wavesShot += 1, then bulletInterval += performance.now(). if wavesShot === bulletWaves, set wavesShot = 0 and shootInterval += performance.now().
@@ -560,7 +562,6 @@ class Enemy {
             this.randomY = Math.floor(Math.random() * (canvas.height - 50));
             this.targetX = this.randomX;
             this.targetY = this.randomY;
-            this.moveTowardPlayer();
             this.nextMoveTime = performance.now() + this.moveInterval
         }
         this.moveTowardPlayer();
@@ -585,7 +586,7 @@ class Enemy {
             return;
         }
         //transition to shooting
-        if (this.inRange && this.type !== 'barracuda') {
+        if (this.inShootRange && this.type !== 'barracuda') {
             this.state = 'shooting';
             return;
         }
