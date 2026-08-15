@@ -151,6 +151,7 @@ class Player {
         this.nextMoveTime = 0;
     }
     update(){
+        if (performance.now() >= nextInvuln) isInvuln = false;
 
         if (playerHealth <= 0) {
             //gameover
@@ -245,22 +246,21 @@ class Player {
         ctx.drawImage(this.image, this.x, this.y, this.width, this.height);
         ctx.restore();
     }
-    takeDamage(x, y) {
+    takeDamage(x, y, damage) {
         if (isInvuln) return;
-        if (performance.now() <= nextInvuln) return;
-        let dx = x - this.centerX;
-        let dy = y - this.centerY;
+        playerHealth -= damage;
+        let dx = this.centerX - x;
+        let dy = this.centerY - y;
         let distance = Math.floor(Math.sqrt(dx * dx + dy * dy));
         if (distance === 0) return;
         let towardX = dx / distance;
         let towardY = dy / distance;
 
-        if (distance <= knockbackForce) {
-            this.x += towardX * moveSpeed;
-            this.y += towardY * moveSpeed;
-            this.centerX = (this.x + this.width) - 25;
-            this.centerY = (this.y + this.height) - 25;
-        }
+        this.x -= towardX * knockbackForce
+        this.y -= towardY * knockbackForce
+        this.centerX = (this.x + this.width) - 25;
+        this.centerY = (this.y + this.height) - 25;
+
         isInvuln = true;
         nextInvuln = performance.now() + invulnTimer;
     }
