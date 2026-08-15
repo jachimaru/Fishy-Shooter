@@ -1,0 +1,758 @@
+const canvas = document.getElementById('canvas1');
+const ctx = canvas.getContext('2d');
+canvas.width = 800;
+canvas.height = 800;
+const collisionCanvas = document.getElementById('collisionCanvas');
+const collisionCtx = collisionCanvas.getContext('2d');
+collisionCanvas.width = canvas.width;
+collisionCanvas.height = canvas.height;
+
+document.addEventListener("keydown", keyDownHandler);
+document.addEventListener("keyup", keyUpHandler);
+document.addEventListener('mousedown', mouseDownHandler);
+document.addEventListener('mouseup', mouseUpHandler);
+document.addEventListener('auxclick', mouseClickHandler);
+
+//helper variables
+let timeToNextFrame = 0;
+let lastTime = 0;
+let randomX = Math.floor(Math.random() * (canvas.width - 50));
+let randomY = Math.floor(Math.random() * (canvas.height - 50));
+
+//player variables
+let startingX = canvas.width / 2;
+let startingY = canvas.height / 2;
+let moveSpeed = 3;
+let killCount = 0;
+let playerHealth = 10;
+
+//dash variables (for jet Propulsion)
+let jetChosen = false;
+let dashCooldown = 3000;
+let dashModifier = 2;
+let dashDistance = 20;
+let canDash = false; //turns true if player chooses jet propulsion
+let jetTurnSpeed = 0.025
+let jetMoveSpeed = 4;
+
+//flipTurn variables (for Flagella)
+let flagellaChosen = true;
+let canFlipTurn = false;
+let flipCooldown = 3000;
+let flipModifier = 1.5;
+let flipDistance = 10;
+
+//dodgeRoll vairables (for Fins)
+let finsChosen = false;
+let finDegree = 0.1;
+let finTurnSpeed = 0.1;
+let finMoveSpeed = 2;
+let canRoll = false;
+let rollCooldown = 3000;
+
+//turning variables
+let degree = 0.5;
+let rotation = (degree * Math.PI) / 180;
+let angle = 0;
+let turnSpeed = 0.05;
+
+//player bullet variables
+let bulletSpeed = 1.75;
+let bulletRadius = 20;
+let bulletDistance = 200;
+let bulletSpawnTimer = null;
+let isShooting = false;
+
+//controls
+let moveRight = ['ArrowRight', 'KeyD'];
+let moveLeft = ['ArrowLeft', 'KeyA'];
+let moveUp = ['ArrowUp', 'KeyW'];
+let moveDown = ['ArrowDown', 'KeyS'];
+let shootButton = 0; //main mouse button
+let dashMouse = 1; //middle mouse button
+
+//control switches
+let rightPressed = false;
+let leftPressed = false;
+let upPressed = false;
+let downPressed = false;
+let shootPressed = false;
+let dashPressed = false;
+
+//enemy handling
+let spawnTimer = 3000;
+let enemyMax = 5;
+
+function keyDownHandler(event) {
+    if (moveRight.includes(event.code)) {
+        rightPressed = true;
+    } else if (moveLeft.includes(event.code)) {
+        leftPressed = true;
+    }
+    if (moveDown.includes(event.code)) {
+        downPressed = true;
+    } else if (moveUp.includes(event.code)) {
+        upPressed = true;
+    }
+}
+
+function keyUpHandler(event) {
+    if (moveRight.includes(event.code)) {
+        rightPressed = false;
+    } else if (moveLeft.includes(event.code)) {
+        leftPressed = false;
+    }
+    if (moveDown.includes(event.code)) {
+        downPressed = false;
+    } else if (moveUp.includes(event.code)) {
+        upPressed = false;
+    }
+}
+
+function mouseDownHandler(event) {
+    if (event.button === 0) {
+        let bullet = new Bullet;
+        bullets.push(bullet)
+        bullet.draw(ctx);
+        bulletSpawnTimer = setInterval(function () {
+            let bullet = new Bullet;
+            bullets.push(bullet)
+            bullet.draw(ctx);
+        }, 500)
+        
+    }
+}
+
+function mouseUpHandler(event) {
+    if (event.button === 0) {
+        clearInterval(bulletSpawnTimer)
+    }
+}
+
+class Player {
+    constructor(x, y){
+        this.height = 50;
+        this.width = 50;
+        this.x = startingX;
+        this.y = startingY;
+        this.angle = angle;
+        this.directionX = Math.cos(this.angle);
+        this.directionY = Math.sin(this.angle);
+        this.image = new Image();
+        this.image.src = 'fish.png'
+        this.centerX = (this.x + this.width) - 25
+        this.centerY = (this.y + this.height) - 25
+        this.moveX = Math.cos(this.angle) * moveSpeed;
+        this.moveY = Math.sin(this.angle) * moveSpeed;
+        this.nextMoveTime = 0;
+    }
+    update(){
+
+        //movement logic
+        if (rightPressed && !leftPressed) {
+            if (!finsChosen){
+                this.angle += turnSpeed;
+            } else if (finsChosen){
+                this.angle += finTurnSpeed;
+            }
+        } else if (leftPressed && !rightPressed) {
+            if (!finsChosen){
+                this.angle -= turnSpeed;
+            } else if (finsChosen){
+                this.angle -= finTurnSpeed;
+            }
+        }
+
+        this.moveX = Math.sin(this.angle) * moveSpeed;
+        this.moveY = -Math.cos(this.angle) * moveSpeed;
+
+        this.directionX = Math.cos(this.angle);
+        this.directionY = Math.sin(this.angle);
+
+        
+        if (downPressed && jetChosen) {
+            if ((this.x - this.moveX) > 0 
+            && (this.x - this.moveX) < canvas.width - this.width 
+            && (this.y - this.moveY) > 0 
+            && (this.y - this.moveY) < canvas.height - this.height) {
+                this.y -= this.moveY / dashModifier;
+                this.x -= this.moveX / dashModifier;
+                this.centerX -= this.moveX / dashModifier;
+                this.centerY -= this.moveY / dashModifier;
+            }
+        } 
+        
+        if (downPressed) {
+            if ((this.x - this.moveX) > 0 
+            && (this.x - this.moveX) < canvas.width - this.width 
+            && (this.y - this.moveY) > 0 
+            && (this.y - this.moveY) < canvas.height - this.height) {  
+                this.y -= this.moveY;
+                this.x -= this.moveX;
+                this.centerX -= this.moveX;
+                this.centerY -= this.moveY;
+        }} else if (upPressed) {
+            if ((this.x + this.moveX) > 0 
+            && (this.x + this.moveX) < canvas.width - this.width 
+            && (this.y + this.moveY) > 0 
+            && (this.y + this.moveY) < canvas.height - this.height) {
+                this.y += this.moveY;
+                this.x += this.moveX;
+                this.centerX += this.moveX;
+                this.centerY += this.moveY;
+        }}
+
+        //movement skill timing logic
+        if (jetChosen) {
+            if (!canDash) {
+                if (performance.now() >= this.nextMoveTime){
+                    canDash = true;
+                }
+            }
+        }
+
+        if (finsChosen) {
+            if (!canRoll) {
+                if (performance.now() >= this.nextMoveTime){
+                    canRoll = true;
+                }
+            }
+        }
+
+        if (flagellaChosen) {
+            if (!canFlipTurn) {
+                if (performance.now() >= this.nextMoveTime){
+                    canFlipTurn = true;
+                }
+            }
+        }
+
+
+    }
+    draw(ctx){
+        ctx.save();
+        ctx.translate(this.centerX, this.centerY);
+        ctx.rotate(this.angle);
+        ctx.translate(-this.centerX, -this.centerY);
+        ctx.drawImage(this.image, this.x, this.y, this.width, this.height);
+        ctx.restore();
+    }
+}
+
+let player = new Player();
+let bullets = [];
+
+const enemyPresets = {
+    normal: {health: 2, moveSpeed: 2, image: 'normal.png', moveInterval: 2000, range: 200, bulletInterval: 400, bulletAmount: 1, bulletWaves: 3, shootInterval: 4000, bulletTravel: bulletDistance}, //normal shooting pattern and movement.
+    barracuda: {health: 1, moveSpeed: 6, image: 'barracuda.png', moveInterval: 2000, range: 600, bulletInterval: 0, bulletAmount: 0, bulletWaves: 0, shootInterval: 0, bulletTravel: 0}, //fast, charges, no shooting.
+    puffer: {health: 5, moveSpeed: 1, image: 'puffer.png', moveInterval: 3000, range: 100, bulletInterval: 800, bulletAmount: 8, bulletWaves: 4, shootInterval: 5000, bulletTravel: 400}, //doesn't move, turns to player and shoots when within distance
+}
+
+const bulletPresets = {
+    normal: {damage: 1, moveSpeed: 4, image: 'bubble.png'},
+    puffer: {damage: 3, moveSpeed: 1.5, image: 'needle.png'},
+}
+let enemies = [];
+let enemyBullets = [];
+
+class Bullet {
+    constructor() {
+        this.width = 20;
+        this.height = 20;
+        this.x = player.centerX - this.width/2
+        this.y = player.centerY - this.height/2
+        this.moveSpeed = player.moveSpeed * bulletSpeed;
+        this.radius = bulletRadius;
+        this.image = new Image()
+        this.image.src = 'bubble.png'
+        this.angle = player.angle;
+        this.moveX = player.moveX;
+        this.moveY = player.moveY;
+        this.distance = bulletDistance;
+        this.markedForDeletion = false;
+        this.startX = player.centerX;
+        this.startY = player.centerY;
+        this.distanceX = Math.abs(this.x - this.startX);
+        this.distanceY = Math.abs(this.y - this.startY);
+    }
+    update(){
+        this.x += this.moveX * bulletSpeed;
+        this.y += this.moveY * bulletSpeed;
+        if (this.distanceX >= this.distance || this.distanceY >= this.distance) this.markedForDeletion = true
+        if (this.x < 0 - this.width || this.x > canvas.width - this.width) this.markedForDeletion = true;
+        if (this.y < 0 - this.height || this.y > canvas.height - this.height) this.markedForDeletion = true;
+    }
+    draw(ctx){
+        ctx.drawImage(this.image, this.x, this.y, this.width, this.height);
+        this.distanceX = Math.abs(this.x - this.startX);
+        this.distanceY = Math.abs(this.y - this.startY);
+    }
+}
+
+class EnemyBullet {
+    constructor(x, y, bulletTravel, type, angle, moveX, moveY) {
+        const preset = bulletPresets[type] || bulletPresets.normal
+
+        this.width = 20;
+        this.height = 20;
+        this.x = x
+        this.y = y
+        this.damage = preset.damage;
+        this.moveSpeed = preset.moveSpeed;
+        this.radius = bulletRadius;
+        this.image = new Image()
+        this.image.src = preset.image;
+        this.angle = angle;
+        this.moveX = moveX;
+        this.moveY = moveY;
+        this.bulletTravel = bulletTravel;
+        this.markedForDeletion = false;
+        this.startX = this.x;
+        this.startY = this.y;
+        this.centerX = (this.x + this.width/2);
+        this.centerY = (this.y + this.height/2);
+        this.distanceX = Math.abs(this.x - this.startX);
+        this.distanceY = Math.abs(this.y - this.startY);
+    }
+    update(){
+        this.x += this.moveX * this.moveSpeed;
+        this.y += this.moveY * this.moveSpeed;
+        this.centerX = (this.x + this.width/2);
+        this.centerY = (this.y + this.height/2);
+        if (this.distanceX >= this.bulletTravel || this.distanceY >= this.bulletTravel) this.markedForDeletion = true
+        if (this.x < 0 - this.width || this.x > canvas.width - this.width) this.markedForDeletion = true;
+        if (this.y < 0 - this.height || this.y > canvas.height - this.height) this.markedForDeletion = true;
+    }
+    draw(ctx){
+        ctx.save();
+        ctx.translate(this.centerX, this.centerY);
+        ctx.rotate(this.angle);
+        ctx.translate(-this.centerX, -this.centerY);
+        ctx.drawImage(this.image, this.x, this.y, this.width, this.height);
+        ctx.restore();
+        this.distanceX = Math.abs(this.x - this.startX);
+        this.distanceY = Math.abs(this.y - this.startY);
+    }
+}
+
+class Enemy {
+    constructor(type, x, y){
+        const preset = enemyPresets[type] || enemyPresets.normal
+
+        this.type = type;
+        this.health = preset.health;
+        this.moveSpeed = preset.moveSpeed;
+        this.moveInterval = preset.moveInterval; 
+        this.range = preset.range;
+        this.bulletInterval = preset.bulletInterval;
+        this.bulletAmount = preset.bulletAmount;
+        this.bulletWaves = preset.bulletWaves;
+        this.bulletTravel = preset.bulletTravel;
+        this.shootInterval = preset.shootInterval;
+        this.nextBulletTime = 0;
+        this.nextShootTime = 0;
+        this.wavesFired = 0;
+
+        this.state = 'patrolling' //patrolling, attacking, shooting
+
+        this.width = 50;
+        this.height = 50;
+        this.x = x;
+        this.y = y;
+        this.centerX = (this.x + this.width) - 25;
+        this.centerY = (this.y + this.height) - 25;
+        this.targetX = player.centerX;
+        this.targetY = player.centerY;
+        this.dx = this.targetX - this.centerX;
+        this.dy = this.targetY - this.centerY;
+        this.angle = (Math.atan2(this.dy, this.dx)) + (Math.PI / 2);
+        this.facingAngle = (Math.atan2(this.dy, this.dx)); //For bullet calculations
+        this.directionX = Math.cos(this.angle);
+        this.directionY = Math.sin(this.angle);
+        this.image = new Image();
+        this.image.src = preset.image;
+        this.moveX = Math.cos(this.angle) * this.moveSpeed;
+        this.moveY = Math.sin(this.angle) * this.moveSpeed;
+        this.nextMoveTime = this.moveInterval;
+        this.distance = Math.floor(Math.sqrt(this.dx * this.dx + this.dy * this.dy));
+        this.towardX = this.dx / this.distance;
+        this.towardY = this.dy / this.distance;
+        this.randomX = Math.floor(Math.random() * (canvas.width - 50));
+        this.randomY = Math.floor(Math.random() * (canvas.height - 50));
+
+        this.isAlive = true;
+        this.isMoving = false;
+        this.inRange = false;
+        this.inShootRange = false;
+        this.isShooting = false;
+        this.isPatrolling = false;
+    }
+    update(){
+        this.dx = this.targetX - this.centerX;
+        this.dy = this.targetY - this.centerY;
+
+        //health check
+        if (this.health <= 0) {
+            this.isAlive = false;
+        }
+
+        this.updateRangeChecks();
+
+        if (this.state === 'patrolling' && this.type === 'normal') this.updatePatrolling();
+        if (this.state === 'attacking') this.updateAttacking();
+        if (this.state === 'shooting') this.updateShooting();
+
+        // //check if player is in moving range
+        // if (Math.abs(this.dx) <= this.range && Math.abs(this.dy) <= this.range) {
+        //     this.inRange = true;
+        //     this.isPatrolling = false;
+        // } else {
+        //     this.inRange = false;
+        //     this.isMoving = false;
+        // }
+
+        // //check if player is in shooting range
+        // if (Math.abs(this.dx) <= this.bulletTravel && Math.abs(this.dy) <= this.bulletTravel) {
+        //     this.inShootRange = true;
+        //     this.isPatrolling = false;
+        // } else {
+        //     this.inShootRange = false;
+        // }
+
+        // //turning logic
+        // if (!this.isMoving && !this.isPatrolling) {
+        //     this.turnTowardPlayer()
+        // }
+        // if (performance.now() >= this.nextMoveTime) {
+        //     if ((this.type === 'barracuda' || this.inRange) && this.type !== 'puffer') {
+        //         this.targetX = player.centerX;
+        //         this.targetY = player.centerY;
+        //         this.isShooting = false;
+        //         this.isMoving = true;
+        //     } else if (this.type === 'normal') {
+        //         this.randomX = Math.floor(Math.random() * (canvas.width - 50));
+        //         this.randomY = Math.floor(Math.random() * (canvas.height - 50));
+        //         this.targetX = this.randomX;
+        //         this.targetY = this.randomY;
+        //         this.isShooting = false;
+        //         this.isPatrolling = true
+        //     }
+        //     this.moveTowardPlayer();
+        //     this.nextMoveTime = performance.now() + this.moveInterval
+            
+        // }
+        // if (this.isMoving && (this.type === 'barracuda' || this.inRange)) {
+        //     this.moveTowardPlayer();
+        // }
+        // if (this.isPatrolling && !this.inRange) {
+        //     this.moveTowardPlayer();
+        // }
+
+        // //shooting logic
+        // if (!this.isShooting && !this.isPatrolling && performance.now() >= this.nextShootTime && this.inShootRange) {
+        //     this.isShooting = true;
+        //     this.isMoving = false;
+        //     this.isPatrolling = false;
+        // }
+        // if (this.isShooting && performance.now() >= this.nextBulletTime) {
+        //     this.shootBullet();
+        // }
+
+
+    }
+    draw(ctx){
+        ctx.save();
+        ctx.translate(this.centerX, this.centerY);
+        ctx.rotate(this.angle);
+        ctx.translate(-this.centerX, -this.centerY);
+        ctx.drawImage(this.image, this.x, this.y, this.width, this.height);
+        ctx.restore();
+    }
+    moveTowardPlayer(){
+        if ((this.x - this.towardX) > 0 
+        && (this.x - this.towardX) < canvas.width - this.width 
+        && (this.y - this.towardY) > 0 
+        && (this.y - this.towardY) < canvas.height - this.height
+        && this.isMoving) {
+            let dx = this.targetX - this.centerX;
+            let dy = this.targetY - this.centerY;
+            this.angle = (Math.atan2(dy, dx)) + (Math.PI / 2);
+            this.facingAngle = (Math.atan2(this.dy, this.dx));
+            this.distance = Math.floor(Math.sqrt(dx * dx + dy * dy));
+            this.towardX = dx / this.distance;
+            this.towardY = dy / this.distance;
+
+            if ((this.distance < 100 && this.type === 'normal') || (this.distance < 5 && this.type === 'barracuda')) {
+                this.isMoving = false;
+                this.inRange = false;
+            } else if ((this.distance >= 100 && this.type === 'normal') || (this.distance >= 5 && this.type === 'barracuda')) {
+                this.x += this.towardX * this.moveSpeed;
+                this.y += this.towardY * this.moveSpeed;
+                this.centerX = (this.x + this.width) - 25;
+                this.centerY = (this.y + this.height) - 25;
+            } 
+        } else {
+            this.nextMoveTime = performance.now() + this.moveInterval;
+        }
+    }
+    turnTowardPlayer(){
+        this.targetX = player.centerX;
+        this.targetY = player.centerY;
+        this.dx = this.targetX - this.centerX;
+        this.dy = this.targetY - this.centerY;
+        this.angle = (Math.atan2(this.dy, this.dx)) + (Math.PI / 2);
+        this.facingAngle = (Math.atan2(this.dy, this.dx));
+    }
+    shootBullet(){
+        // let bullet = new EnemyBullet(this.x, this.y, this.bulletTravel, this.type, this.angle, this.moveX, this.moveY);
+        // enemyBullets.push(bullet)
+        // bullet.draw(ctx)
+        let dx = this.targetX - this.centerX;
+        let dy = this.targetY - this.centerY;
+        let angle = (Math.atan2(dy, dx))// + (Math.PI / 2);
+        this.distance = Math.floor(Math.sqrt(dx * dx + dy * dy));
+        this.towardX = dx / this.distance;
+        this.towardY = dy / this.distance;
+        if (performance.now() >= this.nextBulletTime) {
+            if (this.bulletAmount === 1) {
+                let bullet = new EnemyBullet(this.centerX - 10, this.centerY - 10, this.bulletTravel, this.type, angle, this.towardX, this.towardY);
+                enemyBullets.push(bullet)
+                bullet.draw(ctx)
+            } else {
+                for (let i = 0; i < this.bulletAmount; i++) {
+                    angle = ((2 * Math.PI / this.bulletAmount) * i) + this.facingAngle;
+                    this.towardX = Math.cos(angle);
+                    this.towardY = Math.sin(angle);
+                    let bullet = new EnemyBullet(this.centerX - 10, this.centerY - 10, this.bulletTravel, this.type, angle, this.towardX, this.towardY);
+                    enemyBullets.push(bullet)
+                    bullet.draw(ctx)
+                }
+            }
+        }
+        this.wavesFired += 1
+        this.nextBulletTime = performance.now() + this.bulletInterval
+        if (this.wavesFired >= this.bulletWaves) {
+            this.wavesFired = 0;
+            this.isShooting = false;
+            this.nextShootTime = performance.now() + this.shootInterval;
+            if (!this.inRange) {
+                this.isPatrolling = true;
+            }
+        }
+        //if bulletInterval <= performance.(), shoot bulletAmount bullets.
+        //set wavesShot += 1, then bulletInterval += performance.now(). if wavesShot === bulletWaves, set wavesShot = 0 and shootInterval += performance.now().
+        //isShooting = false.
+    }
+    updateRangeChecks(){
+        this.dx = player.centerX - this.centerX;
+        this.dy = player.centerY - this.centerY;
+        this.inRange = Math.abs(this.dx) <= this.range && Math.abs(this.dy) <= this.range;
+        this.inShootRange = Math.abs(this.dx) <= this.bulletTravel && Math.abs(this.dy) <= this.bulletTravel;
+    }
+    updatePatrolling(){
+        //transition to shooting
+        if (this.inShootRange && this.type !== 'barracuda') {
+            this.state = 'shooting';
+            return;
+        }
+        //transition to attacking
+        if ((this.inRange || this.type === 'barracuda') && this.type !== 'puffer') {
+            this.state = 'attacking';
+            return;
+        }
+        //pick a target
+        if (performance.now() >= this.nextMoveTime) {
+            this.randomX = Math.floor(Math.random() * (canvas.width - 50));
+            this.randomY = Math.floor(Math.random() * (canvas.height - 50));
+            this.targetX = this.randomX;
+            this.targetY = this.randomY;
+        }
+        this.moveTowardPlayer();
+        this.nextMoveTime = performance.now() + this.moveInterval
+    }
+    updateShooting(){
+        //transition to attacking
+        if ((this.inRange || this.type === 'barracuda') && this.type !== 'puffer') {
+            this.state = 'attacking';
+            return;
+        }
+        //transition to patrolling
+        if (!this.inShootRange){
+            this.state = 'patrolling';
+            return;
+        }
+        if (performance.now() < this.nextShootTime) {
+            return;
+        }
+        if (performance.now() >= this.nextBulletTime) {
+            this.shootBullet;
+        }
+    }
+    updateAttacking(){
+
+    }
+}
+
+function triggerDash() {
+    if (canDash && jetChosen) {
+        if (upPressed) {
+            if ((player.x + player.moveX * dashDistance) > 0 
+                && (player.x + player.moveX * dashDistance) < canvas.width - player.width 
+                && (player.y + player.moveY * dashDistance) > 0 
+                && (player.y + player.moveY * dashDistance) < canvas.height - player.height) {
+                player.y += (player.moveY * dashModifier) * dashDistance;
+                player.x += (player.moveX * dashModifier) * dashDistance;
+                player.centerX += (player.moveX * dashModifier) * dashDistance;
+                player.centerY += (player.moveY * dashModifier) * dashDistance;
+            }
+        } else if (downPressed) {
+            if ((player.x - player.moveX * dashDistance) > 0 
+                && (player.x - player.moveX * dashDistance) < canvas.width - player.width 
+                && (player.y - player.moveY * dashDistance) > 0 
+                && (player.y - player.moveY * dashDistance) < canvas.height - player.height) {
+                player.y -= (player.moveY * dashModifier) * dashDistance;
+                player.x -= (player.moveX * dashModifier) * dashDistance;
+                player.centerX -= (player.moveX * dashModifier) * dashDistance;
+                player.centerY -= (player.moveY * dashModifier) * dashDistance;
+            }
+        } else {
+            if ((player.x + player.moveX * dashDistance) > 0 
+                && (player.x + player.moveX * dashDistance) < canvas.width - player.width 
+                && (player.y + player.moveY * dashDistance) > 0 
+                && (player.y + player.moveY * dashDistance) < canvas.height - player.height) {
+                player.y += (player.moveY * dashModifier) * dashDistance;
+                player.x += (player.moveX * dashModifier) * dashDistance;
+                player.centerX += (player.moveX * dashModifier) * dashDistance;
+                player.centerY += (player.moveY * dashModifier) * dashDistance;
+            }
+        }
+        canDash = false;
+        player.nextMoveTime = performance.now() + dashCooldown;
+    }
+    if (canFlipTurn && flagellaChosen) {
+        if (upPressed || downPressed) {
+            if ((player.x - player.moveX * flipDistance) > 0 
+                && (player.x - player.moveX * flipDistance) < canvas.width - player.width 
+                && (player.y - player.moveY * flipDistance) > 0 
+                && (player.y - player.moveY * flipDistance) < canvas.height - player.height) {
+                player.y -= (player.moveY * flipModifier) * flipDistance;
+                player.x -= (player.moveX * flipModifier) * flipDistance;
+                player.centerX -= (player.moveX * flipModifier) * flipDistance;
+                player.centerY -= (player.moveY * flipModifier) * flipDistance;
+                player.angle += Math.PI;
+                player.moveX = Math.sin(player.angle) * moveSpeed;
+                player.moveY = Math.cos(player.angle) * moveSpeed;
+            }
+        } else {
+            if ((player.x - player.moveX * flipDistance) > 0 
+                && (player.x - player.moveX * flipDistance) < canvas.width - player.width 
+                && (player.y - player.moveY * flipDistance) > 0 
+                && (player.y - player.moveY * flipDistance) < canvas.height - player.height) {
+                player.y -= (player.moveY * flipModifier) * flipDistance;
+                player.x -= (player.moveX * flipModifier) * flipDistance;
+                player.centerX -= (player.moveX * flipModifier) * flipDistance;
+                player.centerY -= (player.moveY * flipModifier) * flipDistance;
+                player.angle += Math.PI;
+                player.moveX = Math.sin(player.angle) * moveSpeed;
+                player.moveY = Math.cos(player.angle) * moveSpeed;
+            }
+        }
+        canFlipTurn = false;
+        player.nextMoveTime = performance.now() + dashCooldown;
+    }
+    if (canRoll && finsChosen) {
+        if (upPressed) {
+            if ((player.x + player.moveX * dashDistance) > 0 
+                && (player.x + player.moveX * dashDistance) < canvas.width - player.width 
+                && (player.y + player.moveY * dashDistance) > 0 
+                && (player.y + player.moveY * dashDistance) < canvas.height - player.height) {
+                player.y += (player.moveY * dashModifier) * dashDistance;
+                player.x += (player.moveX * dashModifier) * dashDistance;
+                player.centerX += (player.moveX * dashModifier) * dashDistance;
+                player.centerY += (player.moveY * dashModifier) * dashDistance;
+            }
+        } else if (downPressed) {
+            if ((player.x - player.moveX * dashDistance) > 0 
+                && (player.x - player.moveX * dashDistance) < canvas.width - player.width 
+                && (player.y - player.moveY * dashDistance) > 0 
+                && (player.y - player.moveY * dashDistance) < canvas.height - player.height) {
+                player.y -= (player.moveY * dashModifier) * dashDistance;
+                player.x -= (player.moveX * dashModifier) * dashDistance;
+                player.centerX -= (player.moveX * dashModifier) * dashDistance;
+                player.centerY -= (player.moveY * dashModifier) * dashDistance;
+            }
+        } else {
+            if ((player.x + player.moveX * dashDistance) > 0 
+                && (player.x + player.moveX * dashDistance) < canvas.width - player.width 
+                && (player.y + player.moveY * dashDistance) > 0 
+                && (player.y + player.moveY * dashDistance) < canvas.height - player.height) {
+                player.y += (player.moveY * dashModifier) * dashDistance;
+                player.x += (player.moveX * dashModifier) * dashDistance;
+                player.centerX += (player.moveX * dashModifier) * dashDistance;
+                player.centerY += (player.moveY * dashModifier) * dashDistance;
+            }
+        }
+        canRoll = false;
+        player.nextMoveTime = performance.now() + dashCooldown;
+    }
+}
+
+function mouseClickHandler(event) {
+    if (event.button === 1) {
+        triggerDash();
+    }
+}
+
+function enemySpawner(){
+    if (performance.now() >= spawnTimer && enemies.length < enemyMax) {
+    let randEnemy = Math.floor(Math.random() * 3);
+    randomX = Math.floor(Math.random() * (canvas.width - 50));
+    randomY = Math.floor(Math.random() * (canvas.height - 50));
+    let enemyChoice = '';
+    if (randEnemy === 0) {
+        enemyChoice = 'normal';
+    } else if (randEnemy === 1 && enemies.length > 2) {
+        enemyChoice = 'barracuda';
+    } else if (randEnemy === 2 && enemies.length > 1) {
+        enemyChoice = 'puffer';
+    } else {
+        enemyChoice = 'normal';
+    }
+    let enemy = new Enemy(enemyChoice, randomX, randomY);
+    enemies.push(enemy);
+    enemy.draw(ctx);
+    }
+}
+
+function animate(timestamp){
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    let deltatime = timestamp - lastTime;
+    lastTime = timestamp;
+    timeToNextFrame += deltatime;
+    if (timeToNextFrame > spawnTimer){
+        enemySpawner();
+        timeToNextFrame = 0;
+    }
+    [...bullets, ...enemyBullets, ...enemies].forEach(object => object.update());
+    [...bullets, ...enemyBullets, ...enemies].forEach(object => object.draw(ctx))
+    player.draw(ctx);
+    player.update();
+    bullets = bullets.filter(object => !object.markedForDeletion);
+    enemyBullets = enemyBullets.filter(object => !object.markedForDeletion);
+    enemies = enemies.filter(object => object.isAlive);
+    requestAnimationFrame(animate);
+}
+
+function initialize(){
+    if (finsChosen){
+        moveSpeed = finMoveSpeed;
+        turnSpeed = finTurnSpeed;
+    } else if (jetChosen){
+        moveSpeed = jetMoveSpeed;
+        turnSpeed = jetTurnSpeed;
+    } else if (flagellaChosen){
+
+    }
+}
+initialize()
+animate(0)

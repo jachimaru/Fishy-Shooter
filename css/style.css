@@ -1,0 +1,17 @@
+body {
+    background: #000;
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+}
+canvas {
+    background: #040c30;
+    border: solid #ffffff 5px;
+    position: absolute;
+    top: 5%;
+    left: 50%;
+    transform: translate(-50%);
+}
+#collisionCanvas {
+    opacity: 0;
+}
