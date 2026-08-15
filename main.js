@@ -472,8 +472,7 @@ class Enemy {
         if ((this.x - this.towardX) > 0 
         && (this.x - this.towardX) < canvas.width - this.width 
         && (this.y - this.towardY) > 0 
-        && (this.y - this.towardY) < canvas.height - this.height
-        && this.isMoving) {
+        && (this.y - this.towardY) < canvas.height - this.height) {
             let dx = this.targetX - this.centerX;
             let dy = this.targetY - this.centerY;
             this.angle = (Math.atan2(dy, dx)) + (Math.PI / 2);
@@ -483,7 +482,6 @@ class Enemy {
             this.towardY = dy / this.distance;
 
             if ((this.distance < 100 && this.type === 'normal') || (this.distance < 5 && this.type === 'barracuda')) {
-                this.isMoving = false;
                 this.inRange = false;
             } else if ((this.distance >= 100 && this.type === 'normal') || (this.distance >= 5 && this.type === 'barracuda')) {
                 this.x += this.towardX * this.moveSpeed;
@@ -568,11 +566,6 @@ class Enemy {
         this.moveTowardPlayer();
     }
     updateShooting(){
-        //transition to attacking
-        if ((this.inRange || this.type === 'barracuda') && this.type !== 'puffer') {
-            this.state = 'attacking';
-            return;
-        }
         //transition to patrolling
         if (!this.inShootRange){
             this.state = 'patrolling';
@@ -582,17 +575,17 @@ class Enemy {
             return;
         }
         if (performance.now() >= this.nextBulletTime) {
-            this.shootBullet;
+            this.shootBullet();
         }
     }
     updateAttacking(){
         //transition to patrolling
-        if (!this.inShootRange){
+        if (!this.inRange){
             this.state = 'patrolling';
             return;
         }
         //transition to shooting
-        if (this.inShootRange && this.type !== 'barracuda') {
+        if (this.inRange && this.type !== 'barracuda') {
             this.state = 'shooting';
             return;
         }
