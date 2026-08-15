@@ -388,8 +388,8 @@ class Enemy {
         this.isPatrolling = false;
     }
     update(){
-        this.dx = this.targetX - this.centerX;
-        this.dy = this.targetY - this.centerY;
+        // this.dx = this.targetX - this.centerX;
+        // this.dy = this.targetY - this.centerY;
 
         //health check
         if (this.health <= 0) {
@@ -398,9 +398,17 @@ class Enemy {
 
         this.updateRangeChecks();
 
-        if (this.state === 'attacking') this.updateAttacking();
-        if (this.state === 'shooting') this.updateShooting();
-        if (this.state === 'patrolling' && this.type === 'normal') this.updatePatrolling();
+        if (this.state === 'attacking') {
+            if (this.type !== 'barracuda') {
+                this.turnTowardPlayer();
+            }
+            this.updateAttacking();
+        }
+        if (this.state === 'shooting') {
+            this.turnTowardPlayer();
+            this.updateShooting();
+        }
+        if (this.state === 'patrolling' && this.type !== 'puffer') this.updatePatrolling();
 
         console.log(this.state)
         // //check if player is in moving range
@@ -421,9 +429,6 @@ class Enemy {
         // }
 
         //turning logic
-        if (!this.isMoving && !this.isPatrolling) {
-            this.turnTowardPlayer()
-        }
         // if (performance.now() >= this.nextMoveTime) {
         //     if ((this.type === 'barracuda' || this.inRange) && this.type !== 'puffer') {
         //         this.targetX = player.centerX;
@@ -506,6 +511,7 @@ class Enemy {
         // let bullet = new EnemyBullet(this.x, this.y, this.bulletTravel, this.type, this.angle, this.moveX, this.moveY);
         // enemyBullets.push(bullet)
         // bullet.draw(ctx)
+        this.turnTowardPlayer()
         let dx = this.targetX - this.centerX;
         let dy = this.targetY - this.centerY;
         let angle = (Math.atan2(dy, dx))// + (Math.PI / 2);
@@ -531,7 +537,7 @@ class Enemy {
         if (this.wavesFired >= this.bulletWaves) {
             this.wavesFired = 0;
             this.nextShootTime = performance.now() + this.shootInterval;
-            this.state = 'patrolling'
+            if (this.type !== 'puffer') this.state = 'patrolling'
         }
         //if bulletInterval <= performance.(), shoot bulletAmount bullets.
         //set wavesShot += 1, then bulletInterval += performance.now(). if wavesShot === bulletWaves, set wavesShot = 0 and shootInterval += performance.now().
@@ -566,7 +572,8 @@ class Enemy {
     }
     updateShooting(){
         //transition to patrolling
-        if (!this.inShootRange){
+        if (!this.inShootRange && this.wavesFired === 0){
+            if (this.type === 'puffer') return;
             this.state = 'patrolling';
             return;
         }
@@ -592,10 +599,13 @@ class Enemy {
         if (performance.now() >= this.nextMoveTime) {
             this.targetX = player.centerX;
             this.targetY = player.centerY;
-            this.moveTowardPlayer();
             this.nextMoveTime = performance.now() + this.moveInterval
         }
+        console.log('state:', this.state, 'distance:', this.distance,
+  'nextMoveTime:', this.nextMoveTime, 'now:',
+  Math.floor(performance.now()))
         this.moveTowardPlayer();
+        
     }
 }
 
