@@ -586,7 +586,24 @@ class Enemy {
         }
     }
     updateAttacking(){
-
+        //transition to patrolling
+        if (!this.inShootRange){
+            this.state = 'patrolling';
+            return;
+        }
+        //transition to shooting
+        if (this.inShootRange && this.type !== 'barracuda') {
+            this.state = 'shooting';
+            return;
+        }
+        //chase player
+        if (performance.now() >= this.nextMoveTime) {
+            this.targetX = player.centerX;
+            this.targetY = player.centerY;
+            this.moveTowardPlayer();
+            this.nextMoveTime = performance.now() + this.moveInterval
+        }
+        this.moveTowardPlayer();
     }
 }
 
