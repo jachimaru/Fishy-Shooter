@@ -64,6 +64,7 @@ let turnSpeed = 0.05;
 let bulletSpeed = 1.75;
 let bulletRadius = 20;
 let bulletDistance = 200;
+let bulletDamage = 1;
 let bulletSpawnTimer = null;
 let isShooting = false;
 
@@ -286,6 +287,7 @@ class Bullet {
     constructor() {
         this.width = 20;
         this.height = 20;
+        this.damage = bulletDamage;
         this.x = player.centerX - this.width/2
         this.y = player.centerY - this.height/2
         this.moveSpeed = player.moveSpeed * bulletSpeed;
@@ -380,7 +382,7 @@ class Enemy {
         this.nextShootTime = 0;
         this.wavesFired = 0;
 
-        this.state = 'shooting' //patrolling, attacking, shooting
+        this.state = this.type === 'puffer' ? 'shooting' : 'patrolling'; //patrolling, attacking, shooting
 
         this.width = 50;
         this.height = 50;
@@ -704,7 +706,15 @@ function enemySpawner(){
     }
 }
 
-function checkPlayerBullets(){
+function checkPlayerBullets(damage, health, sourceRadius, targetRadius){
+    //check if player's bullets hit an enemy and subtract damage from health
+}
+
+function checkEnemyBullets(damage, health, sourceRadius, targetRadius){
+
+}
+
+function checkCollision(){
 
 }
 
