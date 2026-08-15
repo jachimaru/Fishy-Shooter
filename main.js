@@ -27,6 +27,7 @@ let killCount = 0;
 let playerHealth = 10;
 let knockbackForce = 25;
 let invulnTimer = 500;
+let nextInvuln = 0;
 let isInvuln = false;
 
 //dash variables (for jet Propulsion)
@@ -245,6 +246,8 @@ class Player {
         ctx.restore();
     }
     takeDamage(x, y) {
+        if (isInvuln) return;
+        if (performance.now() <= nextInvuln) return;
         let dx = x - this.centerX;
         let dy = y - this.centerY;
         let distance = Math.floor(Math.sqrt(dx * dx + dy * dy));
@@ -252,10 +255,14 @@ class Player {
         let towardX = dx / distance;
         let towardY = dy / distance;
 
-        this.x += towardX * moveSpeed;
-        this.y += towardY * moveSpeed;
-        this.centerX = (this.x + this.width) - 25;
-        this.centerY = (this.y + this.height) - 25;
+        if (distance <= knockbackForce) {
+            this.x += towardX * moveSpeed;
+            this.y += towardY * moveSpeed;
+            this.centerX = (this.x + this.width) - 25;
+            this.centerY = (this.y + this.height) - 25;
+        }
+        isInvuln = true;
+        nextInvuln = performance.now() + invulnTimer;
     }
 }
 
