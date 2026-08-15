@@ -419,10 +419,10 @@ class Enemy {
         //     this.inShootRange = false;
         // }
 
-        // //turning logic
-        // if (!this.isMoving && !this.isPatrolling) {
-        //     this.turnTowardPlayer()
-        // }
+        //turning logic
+        if (!this.isMoving && !this.isPatrolling) {
+            this.turnTowardPlayer()
+        }
         // if (performance.now() >= this.nextMoveTime) {
         //     if ((this.type === 'barracuda' || this.inRange) && this.type !== 'puffer') {
         //         this.targetX = player.centerX;
@@ -533,11 +533,7 @@ class Enemy {
         this.nextBulletTime = performance.now() + this.bulletInterval
         if (this.wavesFired >= this.bulletWaves) {
             this.wavesFired = 0;
-            this.isShooting = false;
             this.nextShootTime = performance.now() + this.shootInterval;
-            if (!this.inRange) {
-                this.isPatrolling = true;
-            }
         }
         //if bulletInterval <= performance.(), shoot bulletAmount bullets.
         //set wavesShot += 1, then bulletInterval += performance.now(). if wavesShot === bulletWaves, set wavesShot = 0 and shootInterval += performance.now().
@@ -566,9 +562,10 @@ class Enemy {
             this.randomY = Math.floor(Math.random() * (canvas.height - 50));
             this.targetX = this.randomX;
             this.targetY = this.randomY;
+            this.moveTowardPlayer();
+            this.nextMoveTime = performance.now() + this.moveInterval
         }
         this.moveTowardPlayer();
-        this.nextMoveTime = performance.now() + this.moveInterval
     }
     updateShooting(){
         //transition to attacking
