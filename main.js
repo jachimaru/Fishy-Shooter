@@ -245,9 +245,17 @@ class Player {
         ctx.restore();
     }
     takeDamage(x, y) {
-        let sourceX = x;
-        let sourceY = y;
+        let dx = x - this.centerX;
+        let dy = y - this.centerY;
+        let distance = Math.floor(Math.sqrt(dx * dx + dy * dy));
+        if (distance === 0) return;
+        let towardX = dx / distance;
+        let towardY = dy / distance;
 
+        this.x += towardX * moveSpeed;
+        this.y += towardY * moveSpeed;
+        this.centerX = (this.x + this.width) - 25;
+        this.centerY = (this.y + this.height) - 25;
     }
 }
 
