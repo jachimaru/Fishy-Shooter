@@ -25,6 +25,9 @@ let startingY = canvas.height / 2;
 let moveSpeed = 3;
 let killCount = 0;
 let playerHealth = 10;
+let knockbackForce = 25;
+let invulnTimer = 500;
+let isInvuln = false;
 
 //dash variables (for jet Propulsion)
 let jetChosen = false;
@@ -148,6 +151,10 @@ class Player {
     }
     update(){
 
+        if (playerHealth <= 0) {
+            //gameover
+            console.log('GameOver')
+        }
         //movement logic
         if (rightPressed && !leftPressed) {
             if (!finsChosen){
@@ -236,6 +243,11 @@ class Player {
         ctx.translate(-this.centerX, -this.centerY);
         ctx.drawImage(this.image, this.x, this.y, this.width, this.height);
         ctx.restore();
+    }
+    takeDamage(x, y) {
+        let sourceX = x;
+        let sourceY = y;
+
     }
 }
 
@@ -410,61 +422,6 @@ class Enemy {
         }
         if (this.state === 'patrolling' && this.type !== 'puffer') this.updatePatrolling();
 
-        console.log(this.state)
-        // //check if player is in moving range
-        // if (Math.abs(this.dx) <= this.range && Math.abs(this.dy) <= this.range) {
-        //     this.inRange = true;
-        //     this.isPatrolling = false;
-        // } else {
-        //     this.inRange = false;
-        //     this.isMoving = false;
-        // }
-
-        // //check if player is in shooting range
-        // if (Math.abs(this.dx) <= this.bulletTravel && Math.abs(this.dy) <= this.bulletTravel) {
-        //     this.inShootRange = true;
-        //     this.isPatrolling = false;
-        // } else {
-        //     this.inShootRange = false;
-        // }
-
-        //turning logic
-        // if (performance.now() >= this.nextMoveTime) {
-        //     if ((this.type === 'barracuda' || this.inRange) && this.type !== 'puffer') {
-        //         this.targetX = player.centerX;
-        //         this.targetY = player.centerY;
-        //         this.isShooting = false;
-        //         this.isMoving = true;
-        //     } else if (this.type === 'normal') {
-        //         this.randomX = Math.floor(Math.random() * (canvas.width - 50));
-        //         this.randomY = Math.floor(Math.random() * (canvas.height - 50));
-        //         this.targetX = this.randomX;
-        //         this.targetY = this.randomY;
-        //         this.isShooting = false;
-        //         this.isPatrolling = true
-        //     }
-        //     this.moveTowardPlayer();
-        //     this.nextMoveTime = performance.now() + this.moveInterval
-            
-        // }
-        // if (this.isMoving && (this.type === 'barracuda' || this.inRange)) {
-        //     this.moveTowardPlayer();
-        // }
-        // if (this.isPatrolling && !this.inRange) {
-        //     this.moveTowardPlayer();
-        // }
-
-        // //shooting logic
-        // if (!this.isShooting && !this.isPatrolling && performance.now() >= this.nextShootTime && this.inShootRange) {
-        //     this.isShooting = true;
-        //     this.isMoving = false;
-        //     this.isPatrolling = false;
-        // }
-        // if (this.isShooting && performance.now() >= this.nextBulletTime) {
-        //     this.shootBullet();
-        // }
-
-
     }
     draw(ctx){
         ctx.save();
@@ -484,12 +441,13 @@ class Enemy {
             this.angle = (Math.atan2(dy, dx)) + (Math.PI / 2);
             this.facingAngle = (Math.atan2(this.dy, this.dx));
             this.distance = Math.floor(Math.sqrt(dx * dx + dy * dy));
+            if (this.distance === 0) return;
             this.towardX = dx / this.distance;
             this.towardY = dy / this.distance;
 
-            if ((this.distance < 100 && this.type === 'normal') || (this.distance < 5 && this.type === 'barracuda')) {
+            if ((this.distance < 100 && this.type === 'normal') || (this.distance < 10 && this.type === 'barracuda')) {
                 this.inRange = false;
-            } else if ((this.distance >= 100 && this.type === 'normal') || (this.distance >= 5 && this.type === 'barracuda')) {
+            } else if ((this.distance >= 100 && this.type === 'normal') || (this.distance >= 10 && this.type === 'barracuda')) {
                 this.x += this.towardX * this.moveSpeed;
                 this.y += this.towardY * this.moveSpeed;
                 this.centerX = (this.x + this.width) - 25;
@@ -508,9 +466,6 @@ class Enemy {
         this.facingAngle = (Math.atan2(this.dy, this.dx));
     }
     shootBullet(){
-        // let bullet = new EnemyBullet(this.x, this.y, this.bulletTravel, this.type, this.angle, this.moveX, this.moveY);
-        // enemyBullets.push(bullet)
-        // bullet.draw(ctx)
         this.turnTowardPlayer()
         let dx = this.targetX - this.centerX;
         let dy = this.targetY - this.centerY;
@@ -539,9 +494,6 @@ class Enemy {
             this.nextShootTime = performance.now() + this.shootInterval;
             if (this.type !== 'puffer') this.state = 'patrolling'
         }
-        //if bulletInterval <= performance.(), shoot bulletAmount bullets.
-        //set wavesShot += 1, then bulletInterval += performance.now(). if wavesShot === bulletWaves, set wavesShot = 0 and shootInterval += performance.now().
-        //isShooting = false.
     }
     updateRangeChecks(){
         this.dx = player.centerX - this.centerX;
@@ -601,9 +553,6 @@ class Enemy {
             this.targetY = player.centerY;
             this.nextMoveTime = performance.now() + this.moveInterval
         }
-        console.log('state:', this.state, 'distance:', this.distance,
-  'nextMoveTime:', this.nextMoveTime, 'now:',
-  Math.floor(performance.now()))
         this.moveTowardPlayer();
         
     }
@@ -740,6 +689,10 @@ function enemySpawner(){
     }
 }
 
+function checkPlayerBullets(){
+
+}
+
 function animate(timestamp){
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     let deltatime = timestamp - lastTime;
@@ -749,10 +702,10 @@ function animate(timestamp){
         enemySpawner();
         timeToNextFrame = 0;
     }
-    [...bullets, ...enemyBullets, ...enemies].forEach(object => object.update());
-    [...bullets, ...enemyBullets, ...enemies].forEach(object => object.draw(ctx))
     player.draw(ctx);
     player.update();
+    [...bullets, ...enemyBullets, ...enemies].forEach(object => object.update());
+    [...bullets, ...enemyBullets, ...enemies].forEach(object => object.draw(ctx))
     bullets = bullets.filter(object => !object.markedForDeletion);
     enemyBullets = enemyBullets.filter(object => !object.markedForDeletion);
     enemies = enemies.filter(object => object.isAlive);
