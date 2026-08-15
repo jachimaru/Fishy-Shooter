@@ -512,20 +512,18 @@ class Enemy {
         this.distance = Math.floor(Math.sqrt(dx * dx + dy * dy));
         this.towardX = dx / this.distance;
         this.towardY = dy / this.distance;
-        if (performance.now() >= this.nextBulletTime) {
-            if (this.bulletAmount === 1) {
+        if (this.bulletAmount === 1) {
+            let bullet = new EnemyBullet(this.centerX - 10, this.centerY - 10, this.bulletTravel, this.type, angle, this.towardX, this.towardY);
+            enemyBullets.push(bullet)
+            bullet.draw(ctx)
+        } else {
+            for (let i = 0; i < this.bulletAmount; i++) {
+                angle = ((2 * Math.PI / this.bulletAmount) * i) + this.facingAngle;
+                this.towardX = Math.cos(angle);
+                this.towardY = Math.sin(angle);
                 let bullet = new EnemyBullet(this.centerX - 10, this.centerY - 10, this.bulletTravel, this.type, angle, this.towardX, this.towardY);
                 enemyBullets.push(bullet)
                 bullet.draw(ctx)
-            } else {
-                for (let i = 0; i < this.bulletAmount; i++) {
-                    angle = ((2 * Math.PI / this.bulletAmount) * i) + this.facingAngle;
-                    this.towardX = Math.cos(angle);
-                    this.towardY = Math.sin(angle);
-                    let bullet = new EnemyBullet(this.centerX - 10, this.centerY - 10, this.bulletTravel, this.type, angle, this.towardX, this.towardY);
-                    enemyBullets.push(bullet)
-                    bullet.draw(ctx)
-                }
             }
         }
         this.wavesFired += 1
