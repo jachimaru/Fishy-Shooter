@@ -710,14 +710,15 @@ function enemySpawner(){
 
 function checkPlayerBullets(){
     //check if player's bullets hit an enemy and subtract damage from health
-    for (bullet in bullets) {
-        for (enemy in enemies) {
+    for (bullet of bullets) {
+        for (enemy of enemies) {
             let dx = bullet.centerX - enemy.centerX;
             let dy = bullet.centerY - enemy.centerY;
             let distance = Math.floor(Math.sqrt(dx * dx + dy * dy));
-            if (distance < bullet.radius + enemy.width) {
+            if (distance < bullet.radius + enemy.width / 2) {
                 bullet.markedForDeletion = true;
                 enemy.health -= bullet.damage;
+                console.log(enemy + ': ' + enemy.health)
             }
         }
     }
@@ -743,7 +744,8 @@ function animate(timestamp){
     player.draw(ctx);
     player.update();
     [...bullets, ...enemyBullets, ...enemies].forEach(object => object.update());
-    [...bullets, ...enemyBullets, ...enemies].forEach(object => object.draw(ctx))
+    [...bullets, ...enemyBullets, ...enemies].forEach(object => object.draw(ctx));
+    checkPlayerBullets();
     bullets = bullets.filter(object => !object.markedForDeletion);
     enemyBullets = enemyBullets.filter(object => !object.markedForDeletion);
     enemies = enemies.filter(object => object.isAlive);
