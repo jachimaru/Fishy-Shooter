@@ -19,6 +19,11 @@ let lastTime = 0;
 let randomX = Math.floor(Math.random() * (canvas.width - 50));
 let randomY = Math.floor(Math.random() * (canvas.height - 50));
 
+//ui variables
+let currentWave = 1;
+let enemiesDefeated = 0;
+let enemiesThisWave = 5;
+
 //player variables
 let startingX = canvas.width / 2;
 let startingY = canvas.height / 2;
@@ -88,7 +93,6 @@ let dashPressed = false;
 //enemy handling
 let spawnTimer = 3000;
 let enemyMax = 3;
-let enemiesThisWave = 5;
 let enemiesSpawned = 0;
 
 function keyDownHandler(event) {
