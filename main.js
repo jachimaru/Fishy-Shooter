@@ -272,14 +272,14 @@ let player = new Player();
 let bullets = [];
 
 const enemyPresets = {
-    normal: {health: 2, moveSpeed: 2, image: 'normal.png', moveInterval: 2000, range: 200, bulletInterval: 400, bulletAmount: 1, bulletWaves: 3, shootInterval: 4000, bulletTravel: bulletDistance}, //normal shooting pattern and movement.
-    barracuda: {health: 1, moveSpeed: 6, image: 'barracuda.png', moveInterval: 2000, range: 600, bulletInterval: 0, bulletAmount: 0, bulletWaves: 0, shootInterval: 0, bulletTravel: 0}, //fast, charges, no shooting.
-    puffer: {health: 5, moveSpeed: 1, image: 'puffer.png', moveInterval: 3000, range: 100, bulletInterval: 800, bulletAmount: 8, bulletWaves: 4, shootInterval: 5000, bulletTravel: 400}, //doesn't move, turns to player and shoots when within distance
+    normal: {health: 2, moveSpeed: 2, image: 'normal.png', moveInterval: 2000, range: 200, bulletInterval: 400, bulletAmount: 1, bulletWaves: 3, shootInterval: 4000, bulletTravel: bulletDistance, damage: 1}, //normal shooting pattern and movement.
+    barracuda: {health: 1, moveSpeed: 6, image: 'barracuda.png', moveInterval: 2000, range: 600, bulletInterval: 0, bulletAmount: 0, bulletWaves: 0, shootInterval: 0, bulletTravel: 0, damage: 5}, //fast, charges, no shooting.
+    puffer: {health: 5, moveSpeed: 1, image: 'puffer.png', moveInterval: 3000, range: 100, bulletInterval: 800, bulletAmount: 8, bulletWaves: 4, shootInterval: 5000, bulletTravel: 400, damage: 3}, //doesn't move, turns to player and shoots when within distance
 }
 
 const bulletPresets = {
     normal: {damage: 1, moveSpeed: 4, image: 'bubble.png'},
-    puffer: {damage: 3, moveSpeed: 1.5, image: 'needle.png'},
+    puffer: {damage: 2, moveSpeed: 1.5, image: 'needle.png'},
 }
 let enemies = [];
 let enemyBullets = [];
@@ -386,6 +386,7 @@ class Enemy {
         this.nextBulletTime = 0;
         this.nextShootTime = 0;
         this.wavesFired = 0;
+        this.damage = preset.damage;
 
         this.state = this.type === 'puffer' ? 'shooting' : 'patrolling'; //patrolling, attacking, shooting
 
@@ -726,12 +727,25 @@ function checkPlayerBullets(){
     }
 }
 
-function checkEnemyBullets(damage, health, sourceRadius, targetRadius){
-
+function checkEnemyBullets(){
+    for (bullet of enemyBullets) {
+        let dx = bullet.centerX - player.centerX;
+        let dy = bullet.centerY - player.centerY;
+        let distance = Math.floor(Math.sqrt(dx * dx + dy * dy));
+        if (distance < bullet.radius) {
+            bullet.markedForDeletion = true;
+            playerHealth -= bullet.damage;
+        }
+    }
 }
 
 function checkCollision(){
-
+    for (enemy of enemies) {
+        if (enemy.distance <= player.width / 2) {
+            playerHealth -= enemy.damage;
+            console.log(playerHealth)
+        }
+    }
 }
 
 function animate(timestamp){
@@ -748,6 +762,8 @@ function animate(timestamp){
     [...bullets, ...enemyBullets, ...enemies].forEach(object => object.update());
     [...bullets, ...enemyBullets, ...enemies].forEach(object => object.draw(ctx));
     checkPlayerBullets();
+    checkEnemyBullets();
+    checkCollision();
     bullets = bullets.filter(object => !object.markedForDeletion);
     enemyBullets = enemyBullets.filter(object => !object.markedForDeletion);
     enemies = enemies.filter(object => object.isAlive);
