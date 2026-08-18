@@ -26,7 +26,7 @@ let moveSpeed = 3;
 let killCount = 0;
 let playerHealth = 10;
 let knockbackForce = 25;
-let invulnTimer = 500;
+let invulnTimer = 1500;
 let nextInvuln = 0;
 let isInvuln = false;
 
@@ -87,7 +87,7 @@ let dashPressed = false;
 
 //enemy handling
 let spawnTimer = 3000;
-let enemyMax = 5;
+let enemyMax = 1;
 
 function keyDownHandler(event) {
     if (moveRight.includes(event.code)) {
@@ -251,8 +251,8 @@ class Player {
     takeDamage(x, y, damage) {
         if (isInvuln) return;
         playerHealth -= damage;
-        let dx = this.centerX - x;
-        let dy = this.centerY - y;
+        let dx = x - this.centerX;
+        let dy = y - this.centerY;
         let distance = Math.floor(Math.sqrt(dx * dx + dy * dy));
         if (distance === 0) return;
         let towardX = dx / distance;
@@ -734,16 +734,20 @@ function checkEnemyBullets(){
         let distance = Math.floor(Math.sqrt(dx * dx + dy * dy));
         if (distance < bullet.radius) {
             bullet.markedForDeletion = true;
-            playerHealth -= bullet.damage;
+            if (isInvuln) return
+            player.takeDamage(bullet.x, bullet.y, bullet.damage);
         }
     }
 }
 
 function checkCollision(){
     for (enemy of enemies) {
-        if (enemy.distance <= player.width / 2) {
-            playerHealth -= enemy.damage;
-            console.log(playerHealth)
+        let dx = enemy.centerX - player.centerX;
+        let dy = enemy.centerY - player.centerY;
+        let distance = Math.floor(Math.sqrt(dx * dx + dy * dy));
+        if (distance <= player.width / 2) {
+            if (isInvuln) return;
+            player.takeDamage(enemy.x, enemy.y, enemy.damage);
         }
     }
 }
