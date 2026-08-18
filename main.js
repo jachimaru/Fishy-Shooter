@@ -87,7 +87,9 @@ let dashPressed = false;
 
 //enemy handling
 let spawnTimer = 3000;
-let enemyMax = 1;
+let enemyMax = 3;
+let enemiesThisWave = 5;
+let enemiesSpawned = 0;
 
 function keyDownHandler(event) {
     if (moveRight.includes(event.code)) {
@@ -262,6 +264,7 @@ class Player {
         this.y -= towardY * knockbackForce
         this.centerX = (this.x + this.width) - 25;
         this.centerY = (this.y + this.height) - 25;
+        console.log(dx, dy, towardX, towardY)
 
         isInvuln = true;
         nextInvuln = performance.now() + invulnTimer;
@@ -692,6 +695,7 @@ function mouseClickHandler(event) {
 }
 
 function enemySpawner(){
+    if (enemiesSpawned >= enemiesThisWave) return
     if (performance.now() >= spawnTimer && enemies.length < enemyMax) {
     let randEnemy = Math.floor(Math.random() * 3);
     randomX = Math.floor(Math.random() * (canvas.width - 50));
@@ -699,14 +703,15 @@ function enemySpawner(){
     let enemyChoice = '';
     if (randEnemy === 0) {
         enemyChoice = 'normal';
-    } else if (randEnemy === 1 && enemies.length > 2) {
+    } else if (randEnemy === 1 && (enemies.length > 2 || enemiesSpawned > 3)) {
         enemyChoice = 'barracuda';
-    } else if (randEnemy === 2 && enemies.length > 1) {
+    } else if (randEnemy === 2 && (enemies.length > 1 || enemiesSpawned > 2)) {
         enemyChoice = 'puffer';
     } else {
         enemyChoice = 'normal';
     }
     let enemy = new Enemy(enemyChoice, randomX, randomY);
+    enemiesSpawned += 1;
     enemies.push(enemy);
     enemy.draw(ctx);
     }
@@ -735,7 +740,7 @@ function checkEnemyBullets(){
         if (distance < bullet.radius) {
             bullet.markedForDeletion = true;
             if (isInvuln) return
-            player.takeDamage(bullet.x, bullet.y, bullet.damage);
+            player.takeDamage(bullet.centerX, bullet.centerY, bullet.damage);
         }
     }
 }
@@ -747,7 +752,7 @@ function checkCollision(){
         let distance = Math.floor(Math.sqrt(dx * dx + dy * dy));
         if (distance <= player.width / 2) {
             if (isInvuln) return;
-            player.takeDamage(enemy.x, enemy.y, enemy.damage);
+            player.takeDamage(enemy.centerX, enemy.centerY, enemy.damage);
         }
     }
 }
