@@ -301,6 +301,8 @@ class Bullet {
         this.markedForDeletion = false;
         this.startX = player.centerX;
         this.startY = player.centerY;
+        this.centerX = (this.x + this.width/2);
+        this.centerY = (this.y + this.height/2);
         this.distanceX = Math.abs(this.x - this.startX);
         this.distanceY = Math.abs(this.y - this.startY);
     }
@@ -706,16 +708,19 @@ function enemySpawner(){
     }
 }
 
-function checkPlayerBullets(damage, health, sourceRadius){
+function checkPlayerBullets(){
     //check if player's bullets hit an enemy and subtract damage from health
-    //for (enemy in enemies) {
-        //if (bullet.x <= (enemy.x + (enemy.width/2)) <= bullet.x + bullet.width
-        //&& bullet.y <= (enemy.y + (enemy.height/2)) <= bullet.y + bullet.width) {
-            //enemy.health -= bulletDamage;
-            //bullet.markedForDeletion = true;
-        //}
-        //
-    //}
+    for (bullet in bullets) {
+        for (enemy in enemies) {
+            let dx = bullet.centerX - enemy.centerX;
+            let dy = bullet.centerY - enemy.centerY;
+            let distance = Math.floor(Math.sqrt(dx * dx + dy * dy));
+            if (distance < bullet.radius + enemy.width) {
+                bullet.markedForDeletion = true;
+                enemy.health -= bullet.damage;
+            }
+        }
+    }
 }
 
 function checkEnemyBullets(damage, health, sourceRadius, targetRadius){
