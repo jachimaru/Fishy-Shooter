@@ -65,6 +65,7 @@ let bulletSpeed = 1.75;
 let bulletRadius = 20;
 let bulletDistance = 200;
 let bulletDamage = 1;
+let bulletForgiveness = 10; //increases hitbox of bullets.
 let bulletSpawnTimer = null;
 let isShooting = false;
 
@@ -309,6 +310,8 @@ class Bullet {
     update(){
         this.x += this.moveX * bulletSpeed;
         this.y += this.moveY * bulletSpeed;
+        this.centerX = (this.x + this.width/2);
+        this.centerY = (this.y + this.height/2);
         if (this.distanceX >= this.distance || this.distanceY >= this.distance) this.markedForDeletion = true
         if (this.x < 0 - this.width || this.x > canvas.width - this.width) this.markedForDeletion = true;
         if (this.y < 0 - this.height || this.y > canvas.height - this.height) this.markedForDeletion = true;
@@ -715,10 +718,9 @@ function checkPlayerBullets(){
             let dx = bullet.centerX - enemy.centerX;
             let dy = bullet.centerY - enemy.centerY;
             let distance = Math.floor(Math.sqrt(dx * dx + dy * dy));
-            if (distance < bullet.radius + enemy.width / 2) {
+            if (distance < bullet.radius + bulletForgiveness) {
                 bullet.markedForDeletion = true;
                 enemy.health -= bullet.damage;
-                console.log(enemy + ': ' + enemy.health)
             }
         }
     }
