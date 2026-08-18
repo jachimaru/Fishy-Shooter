@@ -706,8 +706,16 @@ function enemySpawner(){
     }
 }
 
-function checkPlayerBullets(damage, health, sourceRadius, targetRadius){
+function checkPlayerBullets(damage, health, sourceRadius){
     //check if player's bullets hit an enemy and subtract damage from health
+    //for (enemy in enemies) {
+        //if (bullet.x <= (enemy.x + (enemy.width/2)) <= bullet.x + bullet.width
+        //&& bullet.y <= (enemy.y + (enemy.height/2)) <= bullet.y + bullet.width) {
+            //enemy.health -= bulletDamage;
+            //bullet.markedForDeletion = true;
+        //}
+        //
+    //}
 }
 
 function checkEnemyBullets(damage, health, sourceRadius, targetRadius){
