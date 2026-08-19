@@ -28,6 +28,8 @@ let abilityIcon; //for ability icon class and initialize function
 let dashImage = 'dash.png';
 let flipTurnImage = 'flipturn.png';
 let rollImage = 'roll.png';
+let moveAbilityX = 25;
+let moveAbilityY = 725;
 
 //player variables
 let startingX = canvas.width / 2;
@@ -175,19 +177,28 @@ class AbilityIcon {
         this.y = y;
         this.image = new Image();
         this.image.src = image;
-        this.width = 100;
-        this.height = 100;
-        this.getProgress = progressFunction
+        this.width = 50;
+        this.height = 50;
+        this.getProgress = progressFunction;
+        this.centerX = this.x + 25;
+        this.centerY = this.y + 25;
+        this.startAngle = -Math.PI / 2;
+        this.radius = this.width / 2;
     }
     update(){
 
     }
     draw(){
         let progress = Math.max(0, Math.min(1, this.getProgress()));
-        ctx.drawImage()
+        let endAngle = -Math.PI / 2 + (2 * Math.PI * progress)
+        ctx.drawImage(this.image, this.x, this.y, this.width, this.height)
         ctx.globalAlpha = progress;
         ctx.fillStyle = 'black';
-        ctx.fillRect(this.x, this.y, this.width, this,this.height)
+        ctx.beginPath()
+        ctx.moveTo(this.centerX, this.centerY)
+        ctx.arc(this.centerX, this.centerY, this.radius, this.startAngle, endAngle)
+        ctx.globalAlpha = 0.6;
+        ctx.fill();
         ctx.globalAlpha = 1;
     }
 }
@@ -840,6 +851,7 @@ function animate(timestamp){
     bullets = bullets.filter(object => !object.markedForDeletion);
     enemyBullets = enemyBullets.filter(object => !object.markedForDeletion);
     enemies = enemies.filter(object => object.isAlive);
+    abilityIcon.draw();
     requestAnimationFrame(animate);
 }
 
@@ -847,11 +859,19 @@ function initialize(){
     if (finsChosen){
         moveSpeed = finMoveSpeed;
         turnSpeed = finTurnSpeed;
+        abilityIcon = new AbilityIcon(moveAbilityX, moveAbilityY, rollImage, () => {
+            return (player.nextMoveTime - performance.now()) / rollCooldown;
+        });
     } else if (jetChosen){
         moveSpeed = jetMoveSpeed;
         turnSpeed = jetTurnSpeed;
+        abilityIcon = new AbilityIcon(moveAbilityX, moveAbilityY, dashImage, () => {
+            return (player.nextMoveTime - performance.now()) / dashCooldown;
+        });
     } else if (flagellaChosen){
-
+        abilityIcon = new AbilityIcon(moveAbilityX, moveAbilityY, flipTurnImage, () => {
+            return (player.nextMoveTime - performance.now()) / flipCooldown;
+        });
     }
 }
 initialize()
