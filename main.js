@@ -264,10 +264,16 @@ class Player {
         let towardX = dx / distance;
         let towardY = dy / distance;
 
-        this.x -= towardX * knockbackForce
-        this.y -= towardY * knockbackForce
-        this.centerX = (this.x + this.width) - 25;
-        this.centerY = (this.y + this.height) - 25;
+        if ((this.x - towardX * knockbackForce) > 0 
+            && (this.x - towardX * knockbackForce) < canvas.width - this.width 
+            && (this.y - towardY * knockbackForce) > 0 
+            && (this.y - towardY * knockbackForce) < canvas.height - this.height) {
+            this.x -= towardX * knockbackForce
+            this.y -= towardY * knockbackForce
+            this.centerX = (this.x + this.width) - 25;
+            this.centerY = (this.y + this.height) - 25;
+        }
+        
         console.log(dx, dy, towardX, towardY)
 
         isInvuln = true;
