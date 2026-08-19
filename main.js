@@ -25,11 +25,17 @@ let wavesThisLevel = 3;
 let enemiesDefeated = 0;
 let enemiesThisWave = 5;
 let abilityIcon; //for ability icon class and initialize function
+let shootIcon;
 let dashImage = 'dash.png';
 let flipTurnImage = 'flipturn.png';
 let rollImage = 'roll.png';
-let moveAbilityX = 25;
+let bulletImage = 'bullet.png'
+let laserImage = 'laser.png'
+let biteImage = 'bite.png'
+let moveAbilityX = 75;
 let moveAbilityY = 725;
+let shootAbilityX = 25;
+let shootAbilityY = 725;
 
 //player variables
 let startingX = canvas.width / 2;
@@ -73,13 +79,22 @@ let angle = 0;
 let turnSpeed = 0.05;
 
 //player bullet variables
+let filterMouth = true;
 let bulletSpeed = 1.75;
 let bulletRadius = 20;
 let bulletDistance = 200;
 let bulletDamage = 1;
 let bulletForgiveness = 10; //increases hitbox of bullets.
 let bulletSpawnTimer = null;
+let nextShootTime = 0;
+let bulletCooldown = 400;
 let isShooting = false;
+
+//player laser variables
+let proboscusMouth = false;
+
+//player bite variables
+let mandibleMouth = false;
 
 //controls
 let moveRight = ['ArrowRight', 'KeyD'];
@@ -149,14 +164,26 @@ function keyUpHandler(event) {
 
 function mouseDownHandler(event) {
     if (event.button === 0) {
-        let bullet = new Bullet;
-        bullets.push(bullet)
-        bullet.draw(ctx);
-        bulletSpawnTimer = setInterval(function () {
-            let bullet = new Bullet;
-            bullets.push(bullet)
-            bullet.draw(ctx);
-        }, 500)
+        if (filterMouth) {
+            if (performance.now() >= nextShootTime) {
+                let bullet = new Bullet;
+                bullets.push(bullet)
+                bullet.draw(ctx);
+                nextShootTime = performance.now() + bulletCooldown;
+                bulletSpawnTimer = setInterval(function () {
+                    let bullet = new Bullet;
+                    bullets.push(bullet)
+                    bullet.draw(ctx);
+                    nextShootTime = performance.now() + bulletCooldown;
+                }, bulletCooldown)
+            }
+        }
+        if (proboscusMouth) {
+            return;
+        }
+        if (mandibleMouth) {
+            return;
+        }
         
     }
 }
@@ -852,6 +879,7 @@ function animate(timestamp){
     enemyBullets = enemyBullets.filter(object => !object.markedForDeletion);
     enemies = enemies.filter(object => object.isAlive);
     abilityIcon.draw();
+    shootIcon.draw();
     requestAnimationFrame(animate);
 }
 
@@ -871,6 +899,19 @@ function initialize(){
     } else if (flagellaChosen){
         abilityIcon = new AbilityIcon(moveAbilityX, moveAbilityY, flipTurnImage, () => {
             return (player.nextMoveTime - performance.now()) / flipCooldown;
+        });
+    }
+    if (filterMouth){
+        shootIcon = new AbilityIcon(shootAbilityX, shootAbilityY, bulletImage, () => {
+            return (nextShootTime - performance.now()) / bulletCooldown;
+        });
+    } else if (proboscusMouth){
+        shootIcon = new AbilityIcon(shootAbilityX, shootAbilityY, laserImage, () => {
+            return (nextShootTime - performance.now()) / bulletCooldown;
+        });
+    } else if (mandibleMouth){
+        shootIcon = new AbilityIcon(shootAbilityX, shootAbilityY, biteImage, () => {
+            return (nextShootTime - performance.now()) / bulletCooldown;
         });
     }
 }
