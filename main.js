@@ -21,8 +21,13 @@ let randomY = Math.floor(Math.random() * (canvas.height - 50));
 
 //ui variables
 let currentWave = 1;
+let wavesThisLevel = 3;
 let enemiesDefeated = 0;
 let enemiesThisWave = 5;
+let abilityIcon; //for ability icon class and initialize function
+let dashImage = 'dash.png';
+let flipTurnImage = 'flipturn.png';
+let rollImage = 'roll.png';
 
 //player variables
 let startingX = canvas.width / 2;
@@ -81,6 +86,7 @@ let moveUp = ['ArrowUp', 'KeyW'];
 let moveDown = ['ArrowDown', 'KeyS'];
 let shootButton = 0; //main mouse button
 let dashMouse = 1; //middle mouse button
+let pauseButton = 'KeyP';
 
 //control switches
 let rightPressed = false;
@@ -89,6 +95,10 @@ let upPressed = false;
 let downPressed = false;
 let shootPressed = false;
 let dashPressed = false;
+let isPaused = false;
+
+//Pause handling
+let pauseStartTime = 0;
 
 //enemy handling
 let spawnTimer = 3000;
@@ -105,6 +115,20 @@ function keyDownHandler(event) {
         downPressed = true;
     } else if (moveUp.includes(event.code)) {
         upPressed = true;
+    }
+    if (event.code === pauseButton && !isPaused) {
+        isPaused = true;
+        pauseStartTime = performance.now();
+    } else if (event.code === pauseButton && isPaused) {
+        isPaused = false;
+        let pauseDuration = performance.now() - pauseStartTime;
+        player.nextMoveTime += pauseDuration;
+        nextInvuln += pauseDuration;
+        enemies.forEach(enemy => {
+            enemy.nextMoveTime += pauseDuration;
+            enemy.nextShootTime += pauseDuration;
+            enemy.nextBulletTime += pauseDuration;
+        })
     }
 }
 
@@ -141,6 +165,33 @@ function mouseUpHandler(event) {
     }
 }
 
+function drawPause() {
+    //draws Pause overlay
+}
+
+class AbilityIcon {
+    constructor(x, y, image, progressFunction){
+        this.x = x;
+        this.y = y;
+        this.image = new Image();
+        this.image.src = image;
+        this.width = 100;
+        this.height = 100;
+        this.getProgress = progressFunction
+    }
+    update(){
+
+    }
+    draw(){
+        let progress = Math.max(0, Math.min(1, this.getProgress()));
+        ctx.drawImage()
+        ctx.globalAlpha = progress;
+        ctx.fillStyle = 'black';
+        ctx.fillRect(this.x, this.y, this.width, this,this.height)
+        ctx.globalAlpha = 1;
+    }
+}
+
 class Player {
     constructor(x, y){
         this.height = 50;
@@ -163,7 +214,7 @@ class Player {
 
         if (playerHealth <= 0) {
             //gameover
-            console.log('GameOver')
+            
         }
         //movement logic
         if (rightPressed && !leftPressed) {
@@ -273,8 +324,6 @@ class Player {
             this.centerX = (this.x + this.width) - 25;
             this.centerY = (this.y + this.height) - 25;
         }
-        
-        console.log(dx, dy, towardX, towardY)
 
         isInvuln = true;
         nextInvuln = performance.now() + invulnTimer;
@@ -768,6 +817,11 @@ function checkCollision(){
 }
 
 function animate(timestamp){
+    if (isPaused) {
+        //draw pause overlay;
+        requestAnimationFrame(animate);
+        return;
+    }
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     let deltatime = timestamp - lastTime;
     lastTime = timestamp;
