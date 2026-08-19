@@ -47,6 +47,7 @@ let knockbackForce = 25;
 let invulnTimer = 1500;
 let nextInvuln = 0;
 let isInvuln = false;
+let blinkRate = 20;
 
 //dash variables (for jet Propulsion)
 let jetChosen = false;
@@ -868,7 +869,11 @@ function animate(timestamp){
         enemySpawner();
         timeToNextFrame = 0;
     }
-    player.draw(ctx);
+    if (isInvuln && Math.sin(performance.now() / blinkRate) > 0) {
+        player.draw(ctx);
+    } else if (!isInvuln) {
+        player.draw(ctx);
+    }
     player.update();
     [...bullets, ...enemyBullets, ...enemies].forEach(object => object.update());
     [...bullets, ...enemyBullets, ...enemies].forEach(object => object.draw(ctx));
