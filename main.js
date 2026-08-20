@@ -515,6 +515,8 @@ class Enemy {
         this.towardY = this.dy / this.distance;
         this.randomX = Math.floor(Math.random() * (canvas.width - 50));
         this.randomY = Math.floor(Math.random() * (canvas.height - 50));
+        this.hitTimer = 0;
+        this.flashDuration = 6;
 
         this.isAlive = true;
         this.isMoving = false;
@@ -529,6 +531,7 @@ class Enemy {
 
         //health check
         if (this.health <= 0) {
+            enemiesDefeated += 1;
             this.isAlive = false;
         }
 
@@ -553,6 +556,13 @@ class Enemy {
         ctx.rotate(this.angle);
         ctx.translate(-this.centerX, -this.centerY);
         ctx.drawImage(this.image, this.x, this.y, this.width, this.height);
+        if (this.hitTimer > 0) {
+            ctx.globalCompositeOperation = 'source-atop'
+            ctx.fillStyle = 'white';
+            ctx.fillRect(this.x, this.y, this.width, this.height);
+            ctx.globalCompositeOperation = 'source-over';
+            this.hitTimer -= 1;
+        }
         ctx.restore();
     }
     moveTowardPlayer(){
@@ -679,6 +689,26 @@ class Enemy {
         }
         this.moveTowardPlayer();
         
+    }
+    takeDamage(x, y, damage){
+        this.health -= damage;
+        this.hitTimer = this.flashDuration;
+        let dx = x - this.centerX;
+        let dy = y - this.centerY;
+        let distance = Math.floor(Math.sqrt(dx * dx + dy * dy));
+        if (distance === 0) return;
+        let towardX = dx / distance;
+        let towardY = dy / distance;
+
+        if ((this.x - towardX * knockbackForce) > 0 
+            && (this.x - towardX * knockbackForce) < canvas.width - this.width 
+            && (this.y - towardY * knockbackForce) > 0 
+            && (this.y - towardY * knockbackForce) < canvas.height - this.height) {
+            this.x -= towardX * knockbackForce
+            this.y -= towardY * knockbackForce
+            this.centerX = (this.x + this.width) - 25;
+            this.centerY = (this.y + this.height) - 25;
+        }
     }
 }
 
@@ -824,7 +854,7 @@ function checkPlayerBullets(){
             let distance = Math.floor(Math.sqrt(dx * dx + dy * dy));
             if (distance < bullet.radius + bulletForgiveness) {
                 bullet.markedForDeletion = true;
-                enemy.health -= bullet.damage;
+                enemy.takeDamage(bullet.centerX, bullet.centerY, bulletDamage);
             }
         }
     }
@@ -855,6 +885,17 @@ function checkCollision(){
     }
 }
 
+function drawUI(){
+    shootIcon.draw();
+    abilityIcon.draw();
+    ctx.font = '24px Bagel Fat One';
+    ctx.fillStyle = 'white';
+    ctx.textAlign = 'center';
+    ctx.fillText(`Health: ${playerHealth}`, 70, 25);
+    ctx.fillText(`Wave: ${currentWave} / ${wavesThisLevel}`, canvas.width - 75, 25)
+    ctx.fillText(`Enemies Defeated: ${enemiesDefeated} / ${enemiesThisWave}`, canvas.width / 2, 25);
+}
+
 function animate(timestamp){
     if (isPaused) {
         //draw pause overlay;
@@ -883,8 +924,7 @@ function animate(timestamp){
     bullets = bullets.filter(object => !object.markedForDeletion);
     enemyBullets = enemyBullets.filter(object => !object.markedForDeletion);
     enemies = enemies.filter(object => object.isAlive);
-    abilityIcon.draw();
-    shootIcon.draw();
+    drawUI();
     requestAnimationFrame(animate);
 }
 
