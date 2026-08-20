@@ -896,20 +896,7 @@ function drawUI(){
     ctx.fillText(`Enemies Defeated: ${enemiesDefeated} / ${enemiesThisWave}`, canvas.width / 2, 25);
 }
 
-function animate(timestamp){
-    if (isPaused) {
-        //draw pause overlay;
-        requestAnimationFrame(animate);
-        return;
-    }
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    let deltatime = timestamp - lastTime;
-    lastTime = timestamp;
-    timeToNextFrame += deltatime;
-    if (timeToNextFrame > spawnTimer){
-        enemySpawner();
-        timeToNextFrame = 0;
-    }
+function updateAndDraw(){
     if (isInvuln && Math.sin(performance.now() / blinkRate) > 0) {
         player.draw(ctx);
     } else if (!isInvuln) {
@@ -924,6 +911,23 @@ function animate(timestamp){
     bullets = bullets.filter(object => !object.markedForDeletion);
     enemyBullets = enemyBullets.filter(object => !object.markedForDeletion);
     enemies = enemies.filter(object => object.isAlive);
+}
+
+function animate(timestamp){
+    if (isPaused) {
+        //draw pause overlay;
+        requestAnimationFrame(animate);
+        return;
+    }
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    let deltatime = timestamp - lastTime;
+    lastTime = timestamp;
+    timeToNextFrame += deltatime;
+    if (timeToNextFrame > spawnTimer){
+        enemySpawner();
+        timeToNextFrame = 0;
+    }
+    updateAndDraw();
     drawUI();
     requestAnimationFrame(animate);
 }
