@@ -18,6 +18,7 @@ let timeToNextFrame = 0;
 let lastTime = 0;
 let randomX = Math.floor(Math.random() * (canvas.width - 50));
 let randomY = Math.floor(Math.random() * (canvas.height - 50));
+let gameState = 'playing' // playing, paused, waveComplete, gameOver
 
 //ui variables
 let currentWave = 1;
@@ -886,14 +887,23 @@ function checkCollision(){
 }
 
 function drawUI(){
-    shootIcon.draw();
-    abilityIcon.draw();
-    ctx.font = '24px Bagel Fat One';
-    ctx.fillStyle = 'white';
-    ctx.textAlign = 'center';
-    ctx.fillText(`Health: ${playerHealth}`, 70, 25);
-    ctx.fillText(`Wave: ${currentWave} / ${wavesThisLevel}`, canvas.width - 75, 25)
-    ctx.fillText(`Enemies Defeated: ${enemiesDefeated} / ${enemiesThisWave}`, canvas.width / 2, 25);
+    if (!isPaused) {
+        shootIcon.draw();
+        abilityIcon.draw();
+        ctx.font = '24px Bagel Fat One';
+        ctx.fillStyle = 'white';
+        ctx.textAlign = 'center';
+        ctx.fillText(`Health: ${playerHealth}`, 70, 25);
+        ctx.fillText(`Wave: ${currentWave} / ${wavesThisLevel}`, canvas.width - 75, 25)
+        ctx.fillText(`Enemies Defeated: ${enemiesDefeated} / ${enemiesThisWave}`, canvas.width / 2, 25);
+    } else if (isPaused) {
+        ctx.font = '50px Bagel Fat One';
+        ctx.fillStyle = 'white';
+        ctx.textAlign = 'center';
+        ctx.fillText('Game Paused', canvas.width / 2, canvas.height / 2);
+        ctx.font = '25px Bagel Fat One';
+        ctx.fillText(`press 'P' to unpause.`, canvas.width / 2, canvas.height / 2 + 50);
+    }
 }
 
 function updateAndDraw(){
@@ -915,7 +925,7 @@ function updateAndDraw(){
 
 function animate(timestamp){
     if (isPaused) {
-        //draw pause overlay;
+        drawUI();
         requestAnimationFrame(animate);
         return;
     }
