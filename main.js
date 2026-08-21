@@ -13,6 +13,11 @@ document.addEventListener('mousedown', mouseDownHandler);
 document.addEventListener('mouseup', mouseUpHandler);
 document.addEventListener('auxclick', mouseClickHandler);
 
+//level variables
+let currentLevel = 1;
+let levelModifier = 1 + (currentLevel * 0.25);
+let waveModifier = 1.25
+
 //helper variables
 let timeToNextFrame = 0;
 let lastTime = 0;
@@ -23,10 +28,12 @@ let spawnStarted = false;
 let waveOverlayTimer = 3000;
 let countdownNumber = 3;
 let levelComplete = false;
+let waveCompleteEndTime = 0;
+let waveOverlayStart = 0
 
 //ui variables
 let currentWave = 1;
-let wavesThisLevel = 3;
+let wavesThisLevel = 3 + (currentLevel > 1 ? waveModifier : 0);
 let enemiesDefeated = 0;
 let enemiesThisWave = 5;
 let enemiesNextWave = Math.floor(enemiesThisWave * 1.2)
@@ -48,7 +55,8 @@ let startingX = canvas.width / 2;
 let startingY = canvas.height / 2;
 let moveSpeed = 3;
 let killCount = 0;
-let playerHealth = 10;
+let playerHealth = 10 * (currentLevel > 1 ? healthModifier : 1);
+let healthModifier = 1.5;
 let knockbackForce = 25;
 let invulnTimer = 1500;
 let nextInvuln = 0;
@@ -158,6 +166,9 @@ function keyDownHandler(event) {
     if (event.code === gameReset && gameState === 'gameOver'){
         resetGame();
     }
+    if (event.code === gameReset && levelComplete) {
+        goToNextLevel();
+    }
 }
 
 function keyUpHandler(event) {
@@ -206,21 +217,14 @@ function mouseUpHandler(event) {
 }
 
 function drawPause() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.font = '48px Bagel Fat One';
-    ctx.fillStyle = 'white';
-    ctx.textAlign = 'center';
-    ctx.fillText('Game Paused', canvas.width / 2, canvas.height / 2);
-    ctx.font = '24px Bagel Fat One';
-    ctx.fillText(`press 'P' to unpause.`, canvas.width / 2, canvas.height / 2 + 48);
-    if (levelComplete) {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
+    if (gameState === 'playing')
+        {ctx.clearRect(0, 0, canvas.width, canvas.height);
         ctx.font = '48px Bagel Fat One';
         ctx.fillStyle = 'white';
         ctx.textAlign = 'center';
-        ctx.fillText('Level Complete!', canvas.width / 2, canvas.height / 2);
+        ctx.fillText('Game Paused', canvas.width / 2, canvas.height / 2);
         ctx.font = '24px Bagel Fat One';
-        ctx.fillText(`press Enter to proceed to next level.`, canvas.width / 2, canvas.height / 2 + 48);
+        ctx.fillText(`press 'P' to unpause.`, canvas.width / 2, canvas.height / 2 + 48);
     }
 }
 
@@ -456,8 +460,8 @@ class EnemyBullet {
         this.height = 20;
         this.x = x
         this.y = y
-        this.damage = preset.damage;
-        this.moveSpeed = preset.moveSpeed;
+        this.damage = preset.damage * (currentLevel > 1 ? levelModifier : 1);
+        this.moveSpeed = preset.moveSpeed * (currentLevel > 1 ? levelModifier : 1);
         this.radius = bulletRadius;
         this.image = new Image()
         this.image.src = preset.image;
@@ -499,19 +503,19 @@ class Enemy {
         const preset = enemyPresets[type] || enemyPresets.normal
 
         this.type = type;
-        this.health = preset.health;
-        this.moveSpeed = preset.moveSpeed;
+        this.health = preset.health * (currentLevel > 1 ? levelModifier : 1);
+        this.moveSpeed = preset.moveSpeed * (currentLevel > 1 ? levelModifier : 1);
         this.moveInterval = preset.moveInterval; 
-        this.range = preset.range;
+        this.range = preset.range * (currentLevel > 1 ? levelModifier : 1);
         this.bulletInterval = preset.bulletInterval;
         this.bulletAmount = preset.bulletAmount;
-        this.bulletWaves = preset.bulletWaves;
-        this.bulletTravel = preset.bulletTravel;
+        this.bulletWaves = preset.bulletWaves * (currentLevel > 1 ? levelModifier : 1);
+        this.bulletTravel = preset.bulletTravel * (currentLevel > 1 ? levelModifier : 1);
         this.shootInterval = preset.shootInterval;
         this.nextBulletTime = 0;
         this.nextShootTime = 0;
         this.wavesFired = 0;
-        this.damage = preset.damage;
+        this.damage = preset.damage * (currentLevel > 1 ? levelModifier : 1);
 
         this.state = this.type === 'puffer' ? 'shooting' : 'patrolling'; //patrolling, attacking, shooting
 
@@ -855,7 +859,7 @@ function enemySpawner(){
     let enemyChoice = '';
     if (randEnemy === 0) {
         enemyChoice = 'normal';
-    } else if (randEnemy === 1 && (enemies.length > 2 || enemiesSpawned > 3)) {
+    } else if (randEnemy === 1 && ((enemies.length > 3 || enemiesSpawned > 4) && currentLevel >= 2)) {
         enemyChoice = 'barracuda';
     } else if (randEnemy === 2 && (enemies.length > 1 || enemiesSpawned > 2)) {
         enemyChoice = 'puffer';
@@ -915,7 +919,7 @@ function resetGame(){
     wavesThisLevel = 3;
     enemiesDefeated = 0;
     enemiesThisWave = 5;
-    playerHealth = 10
+    playerHealth = 10 * (currentLevel > 1 ? healthModifier : 1);
     spawnStarted = false;
     timeToNextFrame = 0;
     lastTime = 0;
@@ -966,13 +970,12 @@ function drawUI(){
         ctx.fillStyle = 'white';
         ctx.textAlign = 'center';
         ctx.fillText(`Health: ${playerHealth}`, 70, 25);
-        ctx.fillText(`Wave: ${currentWave} / ${wavesThisLevel}`, canvas.width - 75, 25)
+        ctx.fillText(`Wave: ${currentWave} / ${Math.floor(wavesThisLevel)}`, canvas.width - 75, 25)
         ctx.fillText(`Enemies Defeated: ${enemiesDefeated} / ${enemiesThisWave}`, canvas.width / 2, 25);
+        ctx.fillText(`Level: ${currentLevel}`, canvas.width - 60, canvas.height - 25);
     } else if (isPaused) {
         drawPause();
-    } else if (isPaused && levelComplete) {
-
-    }
+    } 
     if (gameState === 'gameOver') {
         ctx.clearRect(0, 0, canvas.width, canvas.height)
         ctx.font = '48px Bagel Fat One';
@@ -982,17 +985,58 @@ function drawUI(){
         ctx.font = '24px Bagel Fat One';
         ctx.fillText(`press Enter to reset`, canvas.width / 2, canvas.height / 2 + 48)
     }
+    if (gameState === 'waveComplete') {
+        ctx.clearRect(0, 0, canvas.width, canvas.height)
+        ctx.font = '48px Bagel Fat One';
+        ctx.fillStyle = 'white';
+        ctx.textAlign = 'center';
+        ctx.fillText(countdownNumber, canvas.width / 2,  canvas.height / 2)
+    }
+    if (gameState === 'levelComplete') {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.font = '48px Bagel Fat One';
+        ctx.fillStyle = 'white';
+        ctx.textAlign = 'center';
+        ctx.fillText('Level Complete!', canvas.width / 2, canvas.height / 2);
+        ctx.font = '24px Bagel Fat One';
+        ctx.fillText(`press Enter to proceed to next level.`, canvas.width / 2, canvas.height / 2 + 48);
+    }
 }
 
 function waveCompleteTransition(){
     enemiesDefeated = 0;
+    enemyBullets = [];
     currentWave += 1;
     enemiesThisWave = enemiesNextWave;
     player = new Player()
-    spawnTimer = 3000;
-    enemiesSpawned = 0;
-    spawnStarted = false;
+    waveCompleteEndTime = performance.now() + waveOverlayTimer;
+    waveOverlayStart = performance.now();
     gameState = 'waveComplete';
+}
+
+function goToNextLevel(){
+    currentLevel += 1;
+    currentWave = 1;
+    enemiesDefeated = 0;
+    playerHealth = 10 * (currentLevel > 1 ? healthModifier : 1);
+    spawnStarted = false;
+    timeToNextFrame = 0;
+    lastTime = 0;
+    killCount = 0;
+    isInvuln = false;
+    bullets = [];
+    enemies = [];
+    enemyBullets = [];
+    canDash = false;
+    canFlipTurn = false;
+    canRoll = false;
+    nextShootTime = 0;
+    isShooting = false;
+    spawnTimer = 3000;
+    enemyMax = 3;
+    enemiesSpawned = 0;
+    player = new Player();
+    gameState = 'playing'
 }
 
 function updateAndDraw(){
@@ -1011,18 +1055,33 @@ function updateAndDraw(){
         bullets = bullets.filter(object => !object.markedForDeletion);
         enemyBullets = enemyBullets.filter(object => !object.markedForDeletion);
         enemies = enemies.filter(object => object.isAlive);
-        if (enemies.length === 0 && spawnStarted) {
+        if (enemies.length === 0 && spawnStarted && enemiesSpawned === enemiesThisWave) {
             if (currentWave === wavesThisLevel) {
-                console.log('Move to Next Level')
                 levelComplete = true;
-                isPaused = true;
+                gameState = 'levelComplete'
             } else {
                 waveCompleteTransition();
             }
         }
     }
     if (gameState === 'waveComplete') {
+        countdownNumber = Math.ceil((waveCompleteEndTime - performance.now()) / 1000)
+        if (performance.now() >= waveCompleteEndTime) {
+            let waveDuration = performance.now() - waveOverlayStart;
+            player.nextMoveTime = 0;
+            nextInvuln = 0;
+            enemies.forEach(enemy => {
+                enemy.nextMoveTime += waveDuration;
+                enemy.nextShootTime += waveDuration;
+                enemy.nextBulletTime += waveDuration;
+            })
+        spawnTimer = 3000;
+        enemiesSpawned = 0;
+        spawnStarted = false;
+        enemies = [];
+        bullets = [];
         gameState = 'playing'
+        }
     }
     if (gameState === 'gameOver') {
         
@@ -1036,12 +1095,14 @@ function animate(timestamp){
         return;
     }
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    let deltatime = timestamp - lastTime;
-    lastTime = timestamp;
-    timeToNextFrame += deltatime;
-    if (timeToNextFrame > spawnTimer){
-        enemySpawner();
-        timeToNextFrame = 0;
+    if (gameState === 'playing') {
+        let deltatime = timestamp - lastTime;
+        lastTime = timestamp;
+        timeToNextFrame += deltatime;
+        if (timeToNextFrame > spawnTimer){
+            enemySpawner();
+            timeToNextFrame = 0;
+        }
     }
     updateAndDraw();
     drawUI();
