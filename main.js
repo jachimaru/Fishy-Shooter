@@ -18,13 +18,18 @@ let timeToNextFrame = 0;
 let lastTime = 0;
 let randomX = Math.floor(Math.random() * (canvas.width - 50));
 let randomY = Math.floor(Math.random() * (canvas.height - 50));
-let gameState = 'playing' // playing, paused, waveComplete, gameOver
+let gameState = 'playing' // playing, waveComplete, gameOver
+let spawnStarted = false;
+let waveOverlayTimer = 3000;
+let countdownNumber = 3;
+let levelComplete = false;
 
 //ui variables
 let currentWave = 1;
 let wavesThisLevel = 3;
 let enemiesDefeated = 0;
 let enemiesThisWave = 5;
+let enemiesNextWave = Math.floor(enemiesThisWave * 1.2)
 let abilityIcon; //for ability icon class and initialize function
 let shootIcon;
 let dashImage = 'dash.png';
@@ -106,6 +111,7 @@ let moveDown = ['ArrowDown', 'KeyS'];
 let shootButton = 0; //main mouse button
 let dashMouse = 1; //middle mouse button
 let pauseButton = 'KeyP';
+let gameReset = 'Enter';
 
 //control switches
 let rightPressed = false;
@@ -148,6 +154,9 @@ function keyDownHandler(event) {
             enemy.nextShootTime += pauseDuration;
             enemy.nextBulletTime += pauseDuration;
         })
+    }
+    if (event.code === gameReset && gameState === 'gameOver'){
+        resetGame();
     }
 }
 
@@ -197,7 +206,22 @@ function mouseUpHandler(event) {
 }
 
 function drawPause() {
-    //draws Pause overlay
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.font = '48px Bagel Fat One';
+    ctx.fillStyle = 'white';
+    ctx.textAlign = 'center';
+    ctx.fillText('Game Paused', canvas.width / 2, canvas.height / 2);
+    ctx.font = '24px Bagel Fat One';
+    ctx.fillText(`press 'P' to unpause.`, canvas.width / 2, canvas.height / 2 + 48);
+    if (levelComplete) {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.font = '48px Bagel Fat One';
+        ctx.fillStyle = 'white';
+        ctx.textAlign = 'center';
+        ctx.fillText('Level Complete!', canvas.width / 2, canvas.height / 2);
+        ctx.font = '24px Bagel Fat One';
+        ctx.fillText(`press Enter to proceed to next level.`, canvas.width / 2, canvas.height / 2 + 48);
+    }
 }
 
 class AbilityIcon {
@@ -253,8 +277,7 @@ class Player {
         if (performance.now() >= nextInvuln) isInvuln = false;
 
         if (playerHealth <= 0) {
-            //gameover
-            
+            gameState = 'gameOver';
         }
         //movement logic
         if (rightPressed && !leftPressed) {
@@ -843,6 +866,7 @@ function enemySpawner(){
     enemiesSpawned += 1;
     enemies.push(enemy);
     enemy.draw(ctx);
+    spawnStarted = true;
     }
 }
 
@@ -886,6 +910,54 @@ function checkCollision(){
     }
 }
 
+function resetGame(){
+    currentWave = 1;
+    wavesThisLevel = 3;
+    enemiesDefeated = 0;
+    enemiesThisWave = 5;
+    playerHealth = 10
+    spawnStarted = false;
+    timeToNextFrame = 0;
+    lastTime = 0;
+    moveSpeed = 3;
+    killCount = 0;
+    playerHealth = 10;
+    knockbackForce = 25;
+    invulnTimer = 1500;
+    nextInvuln = 0;
+    isInvuln = false;
+    bullets = [];
+    enemies = [];
+    enemyBullets = [];
+    dashCooldown = 3000;
+    dashModifier = 2;
+    dashDistance = 20;
+    canDash = false;
+    jetTurnSpeed = 0.025
+    jetMoveSpeed = 4;
+    canFlipTurn = false;
+    flipCooldown = 3000;
+    flipModifier = 1.5;
+    flipDistance = 10;
+    finDegree = 0.1;
+    finTurnSpeed = 0.1;
+    finMoveSpeed = 2;
+    canRoll = false;
+    rollCooldown = 3000;
+    bulletSpeed = 1.75;
+    bulletRadius = 20;
+    bulletDistance = 200;
+    bulletDamage = 1;
+    nextShootTime = 0;
+    bulletCooldown = 400;
+    isShooting = false;
+    spawnTimer = 3000;
+    enemyMax = 3;
+    enemiesSpawned = 0;
+    player = new Player();
+    gameState = 'playing'
+}
+
 function drawUI(){
     if (!isPaused) {
         shootIcon.draw();
@@ -897,30 +969,64 @@ function drawUI(){
         ctx.fillText(`Wave: ${currentWave} / ${wavesThisLevel}`, canvas.width - 75, 25)
         ctx.fillText(`Enemies Defeated: ${enemiesDefeated} / ${enemiesThisWave}`, canvas.width / 2, 25);
     } else if (isPaused) {
-        ctx.font = '50px Bagel Fat One';
+        drawPause();
+    } else if (isPaused && levelComplete) {
+
+    }
+    if (gameState === 'gameOver') {
+        ctx.clearRect(0, 0, canvas.width, canvas.height)
+        ctx.font = '48px Bagel Fat One';
         ctx.fillStyle = 'white';
         ctx.textAlign = 'center';
-        ctx.fillText('Game Paused', canvas.width / 2, canvas.height / 2);
-        ctx.font = '25px Bagel Fat One';
-        ctx.fillText(`press 'P' to unpause.`, canvas.width / 2, canvas.height / 2 + 50);
+        ctx.fillText(`Game Over!`, canvas.width / 2, canvas.height / 2);
+        ctx.font = '24px Bagel Fat One';
+        ctx.fillText(`press Enter to reset`, canvas.width / 2, canvas.height / 2 + 48)
     }
 }
 
+function waveCompleteTransition(){
+    enemiesDefeated = 0;
+    currentWave += 1;
+    enemiesThisWave = enemiesNextWave;
+    player = new Player()
+    spawnTimer = 3000;
+    enemiesSpawned = 0;
+    spawnStarted = false;
+    gameState = 'waveComplete';
+}
+
 function updateAndDraw(){
-    if (isInvuln && Math.sin(performance.now() / blinkRate) > 0) {
-        player.draw(ctx);
-    } else if (!isInvuln) {
-        player.draw(ctx);
+    if (gameState === 'playing') {
+        if (isInvuln && Math.sin(performance.now() / blinkRate) > 0) {
+            player.draw(ctx);
+        } else if (!isInvuln) {
+            player.draw(ctx);
+        }
+        player.update();
+        [...bullets, ...enemyBullets, ...enemies].forEach(object => object.update());
+        [...bullets, ...enemyBullets, ...enemies].forEach(object => object.draw(ctx));
+        checkPlayerBullets();
+        checkEnemyBullets();
+        checkCollision();
+        bullets = bullets.filter(object => !object.markedForDeletion);
+        enemyBullets = enemyBullets.filter(object => !object.markedForDeletion);
+        enemies = enemies.filter(object => object.isAlive);
+        if (enemies.length === 0 && spawnStarted) {
+            if (currentWave === wavesThisLevel) {
+                console.log('Move to Next Level')
+                levelComplete = true;
+                isPaused = true;
+            } else {
+                waveCompleteTransition();
+            }
+        }
     }
-    player.update();
-    [...bullets, ...enemyBullets, ...enemies].forEach(object => object.update());
-    [...bullets, ...enemyBullets, ...enemies].forEach(object => object.draw(ctx));
-    checkPlayerBullets();
-    checkEnemyBullets();
-    checkCollision();
-    bullets = bullets.filter(object => !object.markedForDeletion);
-    enemyBullets = enemyBullets.filter(object => !object.markedForDeletion);
-    enemies = enemies.filter(object => object.isAlive);
+    if (gameState === 'waveComplete') {
+        gameState = 'playing'
+    }
+    if (gameState === 'gameOver') {
+        
+    }
 }
 
 function animate(timestamp){
@@ -940,6 +1046,7 @@ function animate(timestamp){
     updateAndDraw();
     drawUI();
     requestAnimationFrame(animate);
+    
 }
 
 function initialize(){
