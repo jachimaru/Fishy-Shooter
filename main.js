@@ -15,7 +15,7 @@ document.addEventListener('auxclick', mouseClickHandler);
 
 //level variables
 let currentLevel = 1;
-let levelModifier = 1 + (currentLevel * 0.25);
+let levelModifier = 1 + ((currentLevel - 1) * 0.25);
 let waveModifier = 1.25
 
 //helper variables
@@ -35,7 +35,7 @@ let waveOverlayStart = 0
 let currentWave = 1;
 let wavesThisLevel = 3 + (currentLevel > 1 ? waveModifier : 0);
 let enemiesDefeated = 0;
-let enemiesThisWave = 5;
+let enemiesThisWave = 5 + ((currentLevel - 1) * 0.25);
 let enemiesNextWave = Math.floor(enemiesThisWave * 1.2)
 let abilityIcon; //for ability icon class and initialize function
 let shootIcon;
@@ -53,9 +53,9 @@ let shootAbilityY = 725;
 //player variables
 let startingX = canvas.width / 2;
 let startingY = canvas.height / 2;
-let moveSpeed = 3;
+let moveSpeed = 3 * (currentLevel > 1 ? levelModifier : 1);
 let killCount = 0;
-let playerHealth = 10 * (currentLevel > 1 ? healthModifier : 1);
+let playerHealth = Math.floor(10 * (currentLevel > 1 ? healthModifier : 1));
 let healthModifier = 1.5;
 let knockbackForce = 25;
 let invulnTimer = 1500;
@@ -103,13 +103,28 @@ let bulletForgiveness = 10; //increases hitbox of bullets.
 let bulletSpawnTimer = null;
 let nextShootTime = 0;
 let bulletCooldown = 400;
-let isShooting = false;
 
 //player laser variables
 let proboscusMouth = false;
+let laserSpeed = 3;
+let laserWidth = 20;
+let laserDistance = 500;
+let laserDuration = 400;
+let laserDamage = 1;
+let laserSpawnTimer = null;
+let nextLaserTime = 0;
+let laserCooldown = 1000;
+let laserShot = false;
 
 //player bite variables
 let mandibleMouth = false;
+let biteSpeed = 9;
+let biteRadius = 20;
+let biteDistance = 50;
+let biteDamage = 3;
+let biteSpawnTimer = null;
+let nextBiteTime = 0;
+let biteCooldown = 300;
 
 //controls
 let moveRight = ['ArrowRight', 'KeyD'];
@@ -117,7 +132,7 @@ let moveLeft = ['ArrowLeft', 'KeyA'];
 let moveUp = ['ArrowUp', 'KeyW'];
 let moveDown = ['ArrowDown', 'KeyS'];
 let shootButton = 0; //main mouse button
-let dashMouse = 1; //middle mouse button
+let dashButton = [1, 'Space']; //middle mouse button
 let pauseButton = 'KeyP';
 let gameReset = 'Enter';
 
@@ -137,6 +152,7 @@ let pauseStartTime = 0;
 let spawnTimer = 3000;
 let enemyMax = 3;
 let enemiesSpawned = 0;
+let isShooting = false;
 
 function keyDownHandler(event) {
     if (moveRight.includes(event.code)) {
@@ -148,6 +164,9 @@ function keyDownHandler(event) {
         downPressed = true;
     } else if (moveUp.includes(event.code)) {
         upPressed = true;
+    }
+    if (dashButton.includes(event.code)) {
+        triggerDash();
     }
     if (event.code === pauseButton && !isPaused) {
         isPaused = true;
@@ -187,21 +206,11 @@ function keyUpHandler(event) {
 function mouseDownHandler(event) {
     if (event.button === 0) {
         if (filterMouth) {
-            if (performance.now() >= nextShootTime) {
-                let bullet = new Bullet;
-                bullets.push(bullet)
-                bullet.draw(ctx);
-                nextShootTime = performance.now() + bulletCooldown;
-                bulletSpawnTimer = setInterval(function () {
-                    let bullet = new Bullet;
-                    bullets.push(bullet)
-                    bullet.draw(ctx);
-                    nextShootTime = performance.now() + bulletCooldown;
-                }, bulletCooldown)
-            }
+            acidBubbles();
+        
         }
         if (proboscusMouth) {
-            return;
+            pressureStream();
         }
         if (mandibleMouth) {
             return;
@@ -213,6 +222,7 @@ function mouseDownHandler(event) {
 function mouseUpHandler(event) {
     if (event.button === 0) {
         clearInterval(bulletSpawnTimer)
+        clearInterval(laserSpawnTimer)
     }
 }
 
@@ -415,6 +425,7 @@ let enemyBullets = [];
 
 class Bullet {
     constructor() {
+        this.type = 'bullet';
         this.width = 20;
         this.height = 20;
         this.damage = bulletDamage;
@@ -452,6 +463,69 @@ class Bullet {
     }
 }
 
+class Laser {
+    constructor() {
+        this.type = 'laser'
+        this.width = laserWidth;
+        this.height = 20;
+        this.radius = 20;
+        this.length = 0;
+        this.damage = laserDamage;
+        this.duration = laserDuration;
+        this.x = player.centerX - this.width/2
+        this.y = player.centerY - this.height/2
+        this.moveSpeed = player.moveSpeed * laserSpeed;
+        this.image = new Image()
+        this.image.src = 'beam.png'
+        this.angle = player.angle;
+        this.moveX = player.moveX;
+        this.moveY = player.moveY;
+        this.distance = laserDistance;
+        this.markedForDeletion = false;
+        this.startX = player.centerX;
+        this.startY = player.centerY;
+        this.centerX = (this.x + this.width/2);
+        this.centerY = (this.y + this.height/2);
+        this.distanceX = Math.abs(this.x - this.startX);
+        this.distanceY = Math.abs(this.y - this.startY);
+        this.dx = player.centerX - this.centerX;
+        this.dy = player.centerY - this.centerY;
+        this.currentDistance = Math.floor(Math.sqrt(this.dx * this.dx + this.dy * this.dy))
+    }
+    update(){
+        this.x += this.moveX * laserSpeed;
+        this.y += this.moveY * laserSpeed;
+        this.centerX = (this.x + this.width/2);
+        this.centerY = (this.y + this.height/2);
+        this.dx = player.centerX - this.centerX;
+        this.dy = player.centerY - this.centerY;
+        console.log(this.dx, this.dy)
+        this.currentDistance = Math.floor(Math.sqrt(this.dx * this.dx + this.dy * this.dy));
+        console.log(this.currentDistance)
+        if (this.currentDistance >= this.distance) this.markedForDeletion = true
+        if (this.x < 0 - this.width || this.x > canvas.width - this.width) this.markedForDeletion = true;
+        if (this.y < 0 - this.height || this.y > canvas.height - this.height) this.markedForDeletion = true;
+    }
+    draw(ctx){
+        ctx.save();
+        ctx.moveTo(player.centerX, player.centerY);
+        ctx.lineTo(this.centerX, this.centerY);
+        ctx.lineWidth = 6;
+        ctx.strokeStyle = '#85F0EB'
+        ctx.stroke();
+        ctx.translate(this.centerX, this.centerY);
+        ctx.rotate(this.angle);
+        ctx.translate(-this.centerX, -this.centerY);
+        ctx.drawImage(this.image, this.x, this.y, this.width, this.height);
+        ctx.restore();
+        ctx.beginPath();
+        
+        this.distanceX = Math.abs(this.x - this.startX);
+        this.distanceY = Math.abs(this.y - this.startY);
+
+    }
+}
+
 class EnemyBullet {
     constructor(x, y, bulletTravel, type, angle, moveX, moveY) {
         const preset = bulletPresets[type] || bulletPresets.normal
@@ -460,7 +534,7 @@ class EnemyBullet {
         this.height = 20;
         this.x = x
         this.y = y
-        this.damage = preset.damage * (currentLevel > 1 ? levelModifier : 1);
+        this.damage = Math.floor(preset.damage * (currentLevel > 1 ? levelModifier : 1));
         this.moveSpeed = preset.moveSpeed * (currentLevel > 1 ? levelModifier : 1);
         this.radius = bulletRadius;
         this.image = new Image()
@@ -506,11 +580,11 @@ class Enemy {
         this.health = preset.health * (currentLevel > 1 ? levelModifier : 1);
         this.moveSpeed = preset.moveSpeed * (currentLevel > 1 ? levelModifier : 1);
         this.moveInterval = preset.moveInterval; 
-        this.range = preset.range * (currentLevel > 1 ? levelModifier : 1);
+        this.range = preset.range;
         this.bulletInterval = preset.bulletInterval;
         this.bulletAmount = preset.bulletAmount;
         this.bulletWaves = preset.bulletWaves * (currentLevel > 1 ? levelModifier : 1);
-        this.bulletTravel = preset.bulletTravel * (currentLevel > 1 ? levelModifier : 1);
+        this.bulletTravel = preset.bulletTravel;
         this.shootInterval = preset.shootInterval;
         this.nextBulletTime = 0;
         this.nextShootTime = 0;
@@ -552,6 +626,7 @@ class Enemy {
         this.inShootRange = false;
         this.isShooting = false;
         this.isPatrolling = false;
+        this.isDamaged = false;
     }
     update(){
         // this.dx = this.targetX - this.centerX;
@@ -719,6 +794,8 @@ class Enemy {
         
     }
     takeDamage(x, y, damage){
+        if (this.isDamaged === true && proboscusMouth) return;
+        console.log('taken damage')
         this.health -= damage;
         this.hitTimer = this.flashDuration;
         let dx = x - this.centerX;
@@ -737,6 +814,45 @@ class Enemy {
             this.centerX = (this.x + this.width) - 25;
             this.centerY = (this.y + this.height) - 25;
         }
+
+        if (proboscusMouth) this.isDamaged = true;
+    }
+}
+
+function acidBubbles() {
+    if (performance.now() >= nextShootTime) {
+        let bullet = new Bullet;
+        bullets.push(bullet)
+        bullet.draw(ctx);
+        nextShootTime = performance.now() + bulletCooldown;
+        bulletSpawnTimer = setInterval(function () {
+            let bullet = new Bullet;
+            bullets.push(bullet)
+            bullet.draw(ctx);
+            nextShootTime = performance.now() + bulletCooldown;
+        }, bulletCooldown)
+    }
+}
+
+function pressureStream() {
+    if (performance.now() >= nextShootTime) {
+        laserShot = true;
+        let lastAngle = player.angle
+        let laserStopTime = 0;
+        if (laserShot && laserStopTime <= laserDuration) {
+            let bullet = new Laser;
+            bullet.angle = lastAngle
+            bullets.push(bullet)
+            bullet.draw(ctx);
+            console.log(bullet.x)
+        }
+        laserStopTime = performance.now() + nextLaserTime;
+        nextShootTime = performance.now() + laserCooldown;
+        laserShot = false;
+        for (enemy of enemies) {
+            enemy.isDamaged = false;
+        }
+        
     }
 }
 
@@ -845,7 +961,7 @@ function triggerDash() {
 }
 
 function mouseClickHandler(event) {
-    if (event.button === 1) {
+    if (dashButton.includes(event.code) || event.button === 1) {
         triggerDash();
     }
 }
@@ -881,9 +997,12 @@ function checkPlayerBullets(){
             let dx = bullet.centerX - enemy.centerX;
             let dy = bullet.centerY - enemy.centerY;
             let distance = Math.floor(Math.sqrt(dx * dx + dy * dy));
-            if (distance < bullet.radius + bulletForgiveness) {
+            if (bullet.type !== 'laser' && distance < bullet.radius + bulletForgiveness) {
                 bullet.markedForDeletion = true;
                 enemy.takeDamage(bullet.centerX, bullet.centerY, bulletDamage);
+            }
+            if (bullet.type === 'laser' && distance < bullet.radius + bulletForgiveness) {
+                enemy.takeDamage(bullet.centerX, bullet.centerY, laserDamage);
             }
         }
     }
@@ -915,6 +1034,7 @@ function checkCollision(){
 }
 
 function resetGame(){
+    currentLevel = 1
     currentWave = 1;
     wavesThisLevel = 3;
     enemiesDefeated = 0;
@@ -1018,7 +1138,10 @@ function goToNextLevel(){
     currentLevel += 1;
     currentWave = 1;
     enemiesDefeated = 0;
-    playerHealth = 10 * (currentLevel > 1 ? healthModifier : 1);
+    levelModifier = 1 + ((currentLevel - 1) * 0.25);
+    wavesThisLevel = 3 + (currentLevel > 1 ? waveModifier : 0)
+    playerHealth = Math.floor(10 * (currentLevel > 1 ? healthModifier : 1));
+    enemiesNextWave = Math.floor(enemiesThisWave * 1.2)
     spawnStarted = false;
     timeToNextFrame = 0;
     lastTime = 0;
@@ -1041,17 +1164,17 @@ function goToNextLevel(){
 
 function updateAndDraw(){
     if (gameState === 'playing') {
+        [...bullets, ...enemyBullets, ...enemies].forEach(object => object.update());
+        [...bullets, ...enemyBullets, ...enemies].forEach(object => object.draw(ctx));
+        checkPlayerBullets();
+        checkEnemyBullets();
+        checkCollision();
         if (isInvuln && Math.sin(performance.now() / blinkRate) > 0) {
             player.draw(ctx);
         } else if (!isInvuln) {
             player.draw(ctx);
         }
         player.update();
-        [...bullets, ...enemyBullets, ...enemies].forEach(object => object.update());
-        [...bullets, ...enemyBullets, ...enemies].forEach(object => object.draw(ctx));
-        checkPlayerBullets();
-        checkEnemyBullets();
-        checkCollision();
         bullets = bullets.filter(object => !object.markedForDeletion);
         enemyBullets = enemyBullets.filter(object => !object.markedForDeletion);
         enemies = enemies.filter(object => object.isAlive);
