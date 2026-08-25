@@ -154,6 +154,55 @@ let enemyMax = 3;
 let enemiesSpawned = 0;
 let isShooting = false;
 
+//selection variables
+const attackOptions = [
+    {
+        name: 'Acid Bubbles',
+        image: bulletImage,
+        speed: 2,
+        damage: 2,
+        distance: 2
+    },
+    {
+        name: 'Pressure Stream',
+        image: laserImage,
+        speed: 1,
+        damage: 1,
+        distance: 3
+    },
+    {
+        name: 'Mandibles',
+        image: biteImage,
+        speed: 3,
+        damage: 3,
+        distance: 1
+    }
+]
+
+const moveOptions = [
+    {
+        name: 'Tentacles',
+        image: flipTurnImage,
+        speed: 2,
+        manueverability: 2,
+        distance: 2
+    },
+    {
+        name: 'Jet Propulsion',
+        image: dashImage,
+        speed: 3,
+        manueverability: 1,
+        distance: 3
+    },
+    {
+        name: 'Fins',
+        image: rollImage,
+        speed: 1,
+        manueverability: 3,
+        distance: 1
+    }
+]
+
 function keyDownHandler(event) {
     if (moveRight.includes(event.code)) {
         rightPressed = true;
@@ -235,6 +284,27 @@ function drawPause() {
         ctx.fillText('Game Paused', canvas.width / 2, canvas.height / 2);
         ctx.font = '24px Bagel Fat One';
         ctx.fillText(`press 'P' to unpause.`, canvas.width / 2, canvas.height / 2 + 48);
+    }
+}
+
+class SelectionScreen{
+    constructor(options){
+        this.options = options;
+        this.hoveredOption = null;
+        this.firstX
+        this.firstY
+        this.secondX
+        this.secondY
+        this.thirdX
+        this.thirdY
+        this.height
+        this.width
+    }
+    update(){
+
+    }
+    draw(){
+
     }
 }
 
@@ -1265,5 +1335,7 @@ function initialize(){
         });
     }
 }
+
+
 initialize()
 animate(0)
