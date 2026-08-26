@@ -12,6 +12,7 @@ document.addEventListener("keyup", keyUpHandler);
 document.addEventListener('mousedown', mouseDownHandler);
 document.addEventListener('mouseup', mouseUpHandler);
 document.addEventListener('auxclick', mouseClickHandler);
+document.addEventListener('mousemove', mouseMoveHandler)
 
 //level variables
 let currentLevel = 1;
@@ -30,6 +31,9 @@ let countdownNumber = 3;
 let levelComplete = false;
 let waveCompleteEndTime = 0;
 let waveOverlayStart = 0
+let mouthChosen = false;
+let movementChosen = false;
+let initializeGame = false;
 
 //ui variables
 let currentWave = 1;
@@ -135,6 +139,8 @@ let shootButton = 0; //main mouse button
 let dashButton = [1, 'Space']; //middle mouse button
 let pauseButton = 'KeyP';
 let gameReset = 'Enter';
+let mouseX = 0;
+let mouseY = 0;
 
 //control switches
 let rightPressed = false;
@@ -157,25 +163,34 @@ let isShooting = false;
 //selection variables
 const attackOptions = [
     {
-        name: 'Acid Bubbles',
+        name: 'Filter Feeder',
         image: bulletImage,
         speed: 2,
         damage: 2,
-        distance: 2
+        distance: 2,
+        x: 100,
+        abilityName: 'Acid Bubbles',
+        abilityDescription: 'Shoot bubbles of acid forward.'
     },
     {
-        name: 'Pressure Stream',
+        name: 'Proboscus',
         image: laserImage,
         speed: 1,
         damage: 1,
-        distance: 3
+        distance: 3,
+        x: canvas.width/2 - 50,
+        abilityName: 'Pressure Stream',
+        abilityDescription: 'Shoot a stream of pressurized water.'
     },
     {
         name: 'Mandibles',
         image: biteImage,
         speed: 3,
         damage: 3,
-        distance: 1
+        distance: 1,
+        x: canvas.width - 200,
+        abilityName: 'Bite',
+        abilityDescription: 'Attack with your mandibles.'
     }
 ]
 
@@ -185,21 +200,30 @@ const moveOptions = [
         image: flipTurnImage,
         speed: 2,
         manueverability: 2,
-        distance: 2
+        distance: 2,
+        x: 100,
+        abilityName: 'Flip Turn',
+        abilityDescription: 'Turn 180 degrees.'
     },
     {
         name: 'Jet Propulsion',
         image: dashImage,
         speed: 3,
         manueverability: 1,
-        distance: 3
+        distance: 3,
+        x: canvas.width/2 -50,
+        abilityName: 'Jet Dash',
+        abilityDescription: 'Dash forward at high speed.'
     },
     {
         name: 'Fins',
         image: rollImage,
         speed: 1,
         manueverability: 3,
-        distance: 1
+        distance: 1,
+        x: canvas.width - 200,
+        abilityName: 'Side Roll',
+        abilityDescription: 'Spin to the side.'
     }
 ]
 
@@ -275,6 +299,11 @@ function mouseUpHandler(event) {
     }
 }
 
+function mouseMoveHandler(event) {
+    mouseX = event.offsetX;
+    mouseY = event.offsetY;
+}
+
 function drawPause() {
     if (gameState === 'playing')
         {ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -288,25 +317,66 @@ function drawPause() {
 }
 
 class SelectionScreen{
-    constructor(options){
+    constructor(options, title){
         this.options = options;
         this.hoveredOption = null;
-        this.firstX
-        this.firstY
-        this.secondX
-        this.secondY
-        this.thirdX
-        this.thirdY
-        this.height
-        this.width
+        this.y = canvas.height/2;
+        this.size = 100;
+        this.title = title;
+        this.selectedOption = null;
     }
     update(){
-
+        if (mouseX >= this.options[0].x
+            && mouseX <= this.options[0].x + this.size
+            && mouseY >= this.y
+            && mouseY <= this.y + this.size
+        ) {
+            console.log('hello')
+        }
     }
     draw(){
-
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        this.drawBackground();
+        this.drawOptions();
+        //this.drawTooltip();
+    }
+    drawBackground(){
+        //just a fill background and text.
+        ctx.fillStyle = '#260d83'
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.font = '48px Bagel Fat One';
+        ctx.fillStyle = 'white';
+        ctx.textAlign = 'center';
+        ctx.fillText(this.title, canvas.width/2, 300);
+    }
+    drawOptions(){
+        this.options.forEach(option => {
+            const image = new Image();
+            image.src = option.image;
+            ctx.drawImage(image, option.x, this.y);
+            ctx.font = '24px Bagel Fat One';
+            ctx.fillStyle = 'white';
+            ctx.textAlign = 'center';
+            ctx.fillText(option.name, option.x + this.size/2, this.y - 10);
+        })
+    }
+    drawTooltip(){
+        //draw tooltip directly under the option clicked. X value should be this.options[n].x. Y should be this.y + 120. (20 pixels below the image)
+        const option = this.options[this.hoveredOption];
+        ctx.fillStyle = '#ffffff65'
+        ctx.fillRect(option.x, option.y + 120, this.size, this.size*2)
+        ctx.font = '12px Bagel Fat One';
+        ctx.fillStyle = 'white';
+        ctx.textAlign = 'center';
+        ctx.fillText(option.abilityName, option.x + this.size / 2, option.y + 140);
+        ctx.fillText(`Speed: ${option.speed}`, option.x + this.size / 2, option.y + 164);
+        ctx.fillText(`Damage: ${option.damage}`, option.x + this.size / 2, option.y + 188);
+        ctx.fillText(`Distance: ${option.distance}`, option.x + this.size / 2, option.y + 212);
     }
 }
+
+let mouthSelect = new SelectionScreen(attackOptions, 'Choose an Attack Ability.')
+let moveSelect = new SelectionScreen(moveOptions, 'Choose a Movement Ability.')
 
 class AbilityIcon {
     constructor(x, y, image, progressFunction){
@@ -1282,6 +1352,22 @@ function updateAndDraw(){
 }
 
 function animate(timestamp){
+    if (!mouthChosen) {
+        mouthSelect.draw();
+        mouthSelect.update();
+        requestAnimationFrame(animate);
+        return
+    }
+    if (!movementChosen) {
+        moveSelect.draw();
+        moveSelect.update();
+        requestAnimationFrame(animate);
+        return;
+    }
+    if (initializeGame) {
+        initialize();
+        initializeGame = false;
+    }
     if (isPaused) {
         drawUI();
         requestAnimationFrame(animate);
@@ -1336,6 +1422,4 @@ function initialize(){
     }
 }
 
-
-initialize()
 animate(0)
