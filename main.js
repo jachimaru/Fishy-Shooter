@@ -11,8 +11,9 @@ document.addEventListener("keydown", keyDownHandler);
 document.addEventListener("keyup", keyUpHandler);
 document.addEventListener('mousedown', mouseDownHandler);
 document.addEventListener('mouseup', mouseUpHandler);
-document.addEventListener('auxclick', mouseClickHandler);
-document.addEventListener('mousemove', mouseMoveHandler)
+document.addEventListener('auxclick', mouseAuxHandler);
+document.addEventListener('mousemove', mouseMoveHandler);
+document.addEventListener('click', mouseClickHandler);
 
 //level variables
 let currentLevel = 1;
@@ -77,7 +78,7 @@ let jetTurnSpeed = 0.025
 let jetMoveSpeed = 4;
 
 //flipTurn variables (for Flagella)
-let flagellaChosen = true;
+let flagellaChosen = false;
 let canFlipTurn = false;
 let flipCooldown = 3000;
 let flipModifier = 1.5;
@@ -98,7 +99,7 @@ let angle = 0;
 let turnSpeed = 0.05;
 
 //player bullet variables
-let filterMouth = true;
+let filterMouth = false;
 let bulletSpeed = 1.75;
 let bulletRadius = 20;
 let bulletDistance = 200;
@@ -199,7 +200,7 @@ const moveOptions = [
         name: 'Tentacles',
         image: flipTurnImage,
         speed: 2,
-        manueverability: 2,
+        maneuverability: 2,
         distance: 2,
         x: 100,
         abilityName: 'Flip Turn',
@@ -209,7 +210,7 @@ const moveOptions = [
         name: 'Jet Propulsion',
         image: dashImage,
         speed: 3,
-        manueverability: 1,
+        maneuverability: 1,
         distance: 3,
         x: canvas.width/2 -50,
         abilityName: 'Jet Dash',
@@ -219,7 +220,7 @@ const moveOptions = [
         name: 'Fins',
         image: rollImage,
         speed: 1,
-        manueverability: 3,
+        maneuverability: 3,
         distance: 1,
         x: canvas.width - 200,
         abilityName: 'Side Roll',
@@ -331,14 +332,28 @@ class SelectionScreen{
             && mouseY >= this.y
             && mouseY <= this.y + this.size
         ) {
-            console.log('hello')
+            this.hoveredOption = 0
+        } else if (mouseX >= this.options[1].x
+            && mouseX <= this.options[1].x + this.size
+            && mouseY >= this.y
+            && mouseY <= this.y + this.size
+        ) {
+            this.hoveredOption = 1
+        } else if (mouseX >= this.options[2].x
+            && mouseX <= this.options[2].x + this.size
+            && mouseY >= this.y
+            && mouseY <= this.y + this.size
+        ) {
+            this.hoveredOption = 2
+        } else {
+            this.hoveredOption = null;
         }
     }
     draw(){
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         this.drawBackground();
         this.drawOptions();
-        //this.drawTooltip();
+        this.drawTooltip();
     }
     drawBackground(){
         //just a fill background and text.
@@ -362,16 +377,23 @@ class SelectionScreen{
     }
     drawTooltip(){
         //draw tooltip directly under the option clicked. X value should be this.options[n].x. Y should be this.y + 120. (20 pixels below the image)
+        if (this.hoveredOption === null || this.hoveredOption === undefined || !this.options[this.hoveredOption]) {
+        return; 
+        }
         const option = this.options[this.hoveredOption];
         ctx.fillStyle = '#ffffff65'
-        ctx.fillRect(option.x, option.y + 120, this.size, this.size*2)
-        ctx.font = '12px Bagel Fat One';
+        ctx.fillRect(option.x - 25, this.y + 120, this.size * 1.5, this.size)
+        ctx.font = '18px Bagel Fat One';
         ctx.fillStyle = 'white';
         ctx.textAlign = 'center';
-        ctx.fillText(option.abilityName, option.x + this.size / 2, option.y + 140);
-        ctx.fillText(`Speed: ${option.speed}`, option.x + this.size / 2, option.y + 164);
-        ctx.fillText(`Damage: ${option.damage}`, option.x + this.size / 2, option.y + 188);
-        ctx.fillText(`Distance: ${option.distance}`, option.x + this.size / 2, option.y + 212);
+        ctx.fillText(option.abilityName, option.x + this.size / 2, this.y + 140);
+        ctx.fillText(`Speed: ${option.speed}`, option.x + this.size / 2, this.y + 164);
+        if (!mouthChosen) {
+            ctx.fillText(`Damage: ${option.damage}`, option.x + this.size / 2, this.y + 188);
+        } else if (!movementChosen){
+            ctx.fillText(`Turning: ${option.maneuverability}`, option.x + this.size / 2, this.y + 188);
+        }
+        ctx.fillText(`Distance: ${option.distance}`, option.x + this.size / 2, this.y + 212);
     }
 }
 
@@ -571,7 +593,7 @@ class Bullet {
         this.damage = bulletDamage;
         this.x = player.centerX - this.width/2
         this.y = player.centerY - this.height/2
-        this.moveSpeed = player.moveSpeed * bulletSpeed;
+        this.moveSpeed = (3 * (currentLevel > 1 ? levelModifier : 1)) * bulletSpeed;
         this.radius = bulletRadius;
         this.image = new Image()
         this.image.src = 'bubble.png'
@@ -1100,10 +1122,37 @@ function triggerDash() {
     }
 }
 
-function mouseClickHandler(event) {
+function mouseAuxHandler(event) {
+    console.log("CLICK", mouthSelect.hoveredOption);
     if (dashButton.includes(event.code) || event.button === 1) {
         triggerDash();
     }
+}
+
+function mouseClickHandler(event) {
+    if (event.button === 0 && mouthSelect.hoveredOption === 0) {
+        filterMouth = true;
+        mouthChosen = true;
+    } else if (event.button === 0 && mouthSelect.hoveredOption === 1) {
+        proboscusMouth = true;
+        mouthChosen = true;
+    } else if (event.button === 0 && mouthSelect.hoveredOption === 2) {
+        mandibleMouth = true;
+        mouthChosen = true;
+    } 
+    if (event.button === 0 && moveSelect.hoveredOption === 0) {
+        flagellaChosen = true;
+        movementChosen = true;
+        initializeGame = true;
+    } else if (event.button === 0 && moveSelect.hoveredOption === 1) {
+        jetChosen = true;
+        movementChosen = true;
+        initializeGame = true;
+    } else if (event.button === 0 && moveSelect.hoveredOption === 2) {
+        finsChosen = true;
+        movementChosen = true;
+        initializeGame = true;
+    } 
 }
 
 function enemySpawner(){
@@ -1413,11 +1462,11 @@ function initialize(){
         });
     } else if (proboscusMouth){
         shootIcon = new AbilityIcon(shootAbilityX, shootAbilityY, laserImage, () => {
-            return (nextShootTime - performance.now()) / bulletCooldown;
+            return (nextShootTime - performance.now()) / laserCooldown;
         });
     } else if (mandibleMouth){
         shootIcon = new AbilityIcon(shootAbilityX, shootAbilityY, biteImage, () => {
-            return (nextShootTime - performance.now()) / bulletCooldown;
+            return (nextShootTime - performance.now()) / biteCooldown;
         });
     }
 }
