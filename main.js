@@ -1223,6 +1223,19 @@ function checkCollision(){
 }
 
 function resetGame(){
+    mouthChosen = false;
+    movementChosen = false;
+    initializeGame = false;
+    jetChosen = false;
+    flagellaChosen = false;
+    finsChosen = false;
+    filterMouth = false;
+    proboscusMouth = false;
+    mandibleMouth = false;
+    mouthSelect.hoveredOption = null;
+    mouthSelect.selectedOption = null;
+    moveSelect.hoveredOption = null;
+    moveSelect.selectedOption = null;
     currentLevel = 1
     currentWave = 1;
     wavesThisLevel = 3;
