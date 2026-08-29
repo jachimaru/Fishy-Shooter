@@ -89,6 +89,8 @@ let finsChosen = false;
 let finDegree = 0.1;
 let finTurnSpeed = 0.1;
 let finMoveSpeed = 2;
+let rollPivotDistance = 50;
+let rollDistance = 45;
 let canRoll = false;
 let rollCooldown = 3000;
 
@@ -1087,34 +1089,25 @@ function triggerDash() {
     }
     if (canRoll && finsChosen) {
         if (upPressed) {
-            if ((player.x + player.moveX * dashDistance) > 0 
-                && (player.x + player.moveX * dashDistance) < canvas.width - player.width 
-                && (player.y + player.moveY * dashDistance) > 0 
-                && (player.y + player.moveY * dashDistance) < canvas.height - player.height) {
-                player.y += (player.moveY * dashModifier) * dashDistance;
-                player.x += (player.moveX * dashModifier) * dashDistance;
-                player.centerX += (player.moveX * dashModifier) * dashDistance;
-                player.centerY += (player.moveY * dashModifier) * dashDistance;
+            if ((player.x + player.moveX * rollDistance) > 0 
+                && (player.x + player.moveX * rollDistance) < canvas.width - player.width 
+                && (player.y + player.moveY * rollDistance) > 0 
+                && (player.y + player.moveY * rollDistance) < canvas.height - player.height) {
+                
             }
         } else if (downPressed) {
-            if ((player.x - player.moveX * dashDistance) > 0 
-                && (player.x - player.moveX * dashDistance) < canvas.width - player.width 
-                && (player.y - player.moveY * dashDistance) > 0 
-                && (player.y - player.moveY * dashDistance) < canvas.height - player.height) {
-                player.y -= (player.moveY * dashModifier) * dashDistance;
-                player.x -= (player.moveX * dashModifier) * dashDistance;
-                player.centerX -= (player.moveX * dashModifier) * dashDistance;
-                player.centerY -= (player.moveY * dashModifier) * dashDistance;
+            if ((player.x - player.moveX * rollDistance) > 0 
+                && (player.x - player.moveX * rollDistance) < canvas.width - player.width 
+                && (player.y - player.moveY * rollDistance) > 0 
+                && (player.y - player.moveY * rollDistance) < canvas.height - player.height) {
+                
             }
         } else {
-            if ((player.x + player.moveX * dashDistance) > 0 
-                && (player.x + player.moveX * dashDistance) < canvas.width - player.width 
-                && (player.y + player.moveY * dashDistance) > 0 
-                && (player.y + player.moveY * dashDistance) < canvas.height - player.height) {
-                player.y += (player.moveY * dashModifier) * dashDistance;
-                player.x += (player.moveX * dashModifier) * dashDistance;
-                player.centerX += (player.moveX * dashModifier) * dashDistance;
-                player.centerY += (player.moveY * dashModifier) * dashDistance;
+            if ((player.x + player.moveX * rollDistance) > 0 
+                && (player.x + player.moveX * rollDistance) < canvas.width - player.width 
+                && (player.y + player.moveY * rollDistance) > 0 
+                && (player.y + player.moveY * rollDistance) < canvas.height - player.height) {
+                
             }
         }
         canRoll = false;
