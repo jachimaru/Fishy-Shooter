@@ -89,8 +89,8 @@ let finsChosen = false;
 let finDegree = 0.1;
 let finTurnSpeed = 0.1;
 let finMoveSpeed = 2;
-let rollPivotDistance = 50;
-let rollDistance = 45;
+let rollPivotDistance = 150;
+let rollDistance = 45 * Math.PI / 180;
 let canRoll = false;
 let rollCooldown = 3000;
 
@@ -573,6 +573,7 @@ class Player {
 
 let player = new Player();
 let bullets = [];
+
 
 const enemyPresets = {
     normal: {health: 2, moveSpeed: 2, image: 'normal.png', moveInterval: 2000, range: 200, bulletInterval: 400, bulletAmount: 1, bulletWaves: 3, shootInterval: 4000, bulletTravel: bulletDistance, damage: 1}, //normal shooting pattern and movement.
@@ -1093,6 +1094,24 @@ function triggerDash() {
                 && (player.x + player.moveX * rollDistance) < canvas.width - player.width 
                 && (player.y + player.moveY * rollDistance) > 0 
                 && (player.y + player.moveY * rollDistance) < canvas.height - player.height) {
+                let pivotX = player.centerX + (Math.sin(player.angle) * rollPivotDistance);
+                let pivotY = player.centerY - (Math.cos(player.angle) * rollPivotDistance);
+                let dx = player.centerX - pivotX;
+                let dy = player.centerY - pivotY;
+                let distance = Math.floor(Math.sqrt(dx * dx + dy * dy));
+                if (distance === 0) return;
+                let towardX = dx / distance;
+                let towardY = dy / distance;
+                let newX = towardX * Math.cos(rollDistance) - towardY * Math.sin(rollDistance);
+                let newY = towardX * Math.sin(rollDistance) + towardY * Math.cos(rollDistance);
+                let playerX = pivotX + (newX * distance);
+                let playerY = pivotY + (newY * distance);
+                
+                player.angle -= rollDistance;
+                player.centerX = (playerX + player.width) - 25;
+                player.centerY = (playerY + player.height) - 25;
+                player.x = playerX;
+                player.y = playerY;
                 
             }
         } else if (downPressed) {
@@ -1100,14 +1119,48 @@ function triggerDash() {
                 && (player.x - player.moveX * rollDistance) < canvas.width - player.width 
                 && (player.y - player.moveY * rollDistance) > 0 
                 && (player.y - player.moveY * rollDistance) < canvas.height - player.height) {
+                let pivotX = player.centerX + (Math.sin(player.angle) * rollPivotDistance);
+                let pivotY = player.centerY - (Math.cos(player.angle) * rollPivotDistance);
+                let dx = player.centerX - pivotX;
+                let dy = player.centerY - pivotY;
+                let distance = Math.floor(Math.sqrt(dx * dx + dy * dy));
+                if (distance === 0) return;
+                let towardX = dx / distance;
+                let towardY = dy / distance;
+                let newX = towardX * Math.cos(rollDistance) - towardY * Math.sin(rollDistance);
+                let newY = towardX * Math.sin(rollDistance) + towardY * Math.cos(rollDistance);
+                let playerX = pivotX + (newX * distance);
+                let playerY = pivotY + (newY * distance);
                 
+                player.angle += rollDistance;
+                player.centerX = (playerX + player.width) - 25;
+                player.centerY = (playerY + player.height) - 25;
+                player.x = playerX;
+                player.y = playerY;
             }
         } else {
             if ((player.x + player.moveX * rollDistance) > 0 
                 && (player.x + player.moveX * rollDistance) < canvas.width - player.width 
                 && (player.y + player.moveY * rollDistance) > 0 
                 && (player.y + player.moveY * rollDistance) < canvas.height - player.height) {
+                let pivotX = player.centerX + (Math.sin(player.angle) * rollPivotDistance);
+                let pivotY = player.centerY - (Math.cos(player.angle) * rollPivotDistance);
+                let dx = player.centerX - pivotX;
+                let dy = player.centerY - pivotY;
+                let distance = Math.floor(Math.sqrt(dx * dx + dy * dy));
+                if (distance === 0) return;
+                let towardX = dx / distance;
+                let towardY = dy / distance;
+                let newX = towardX * Math.cos(rollDistance) - towardY * Math.sin(rollDistance);
+                let newY = towardX * Math.sin(rollDistance) + towardY * Math.cos(rollDistance);
+                let playerX = pivotX + (newX * distance);
+                let playerY = pivotY + (newY * distance);
                 
+                player.angle -= rollDistance;
+                player.centerX = (playerX + player.width) - 25;
+                player.centerY = (playerY + player.height) - 25;
+                player.x = playerX;
+                player.y = playerY;
             }
         }
         canRoll = false;
@@ -1370,6 +1423,8 @@ function updateAndDraw(){
             player.draw(ctx);
         }
         player.update();
+        ctx.fillStyle = 'white';
+        ctx.fillRect(player.centerX + (Math.sin(player.angle) * rollPivotDistance), player.centerY - (Math.cos(player.angle) * rollPivotDistance), 10, 10);
         bullets = bullets.filter(object => !object.markedForDeletion);
         enemyBullets = enemyBullets.filter(object => !object.markedForDeletion);
         enemies = enemies.filter(object => object.isAlive);
