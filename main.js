@@ -329,7 +329,7 @@ class targetReticle{
         if (filterMouth) {
             this.distance = bulletDistance;
         } else if (proboscusMouth) {
-            this.distance = laserDistance;
+            this.distance = laserDistance / 2;
         } else if (mandibleMouth) {
             this.distance = biteDistance;
         }
