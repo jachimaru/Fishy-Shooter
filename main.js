@@ -89,8 +89,9 @@ let finsChosen = false;
 let finDegree = 0.1;
 let finTurnSpeed = 0.1;
 let finMoveSpeed = 2;
-let rollPivotDistance = 150;
-let rollDistance = 45 * Math.PI / 180;
+let rollPivotDistance = 200;
+let rollAngle = 50;
+let rollDistance = rollAngle * Math.PI / 180;
 let canRoll = false;
 let rollCooldown = 3000;
 
@@ -113,7 +114,7 @@ let bulletCooldown = 400;
 
 //player laser variables
 let proboscusMouth = false;
-let laserSpeed = 3;
+let laserSpeed = 5;
 let laserWidth = 20;
 let laserDistance = 500;
 let laserDuration = 400;
@@ -173,7 +174,7 @@ const attackOptions = [
         distance: 2,
         x: 100,
         abilityName: 'Acid Bubbles',
-        abilityDescription: 'Shoot bubbles of acid forward.'
+        abilityDescription: 'Can shoot while moving.'
     },
     {
         name: 'Proboscus',
@@ -183,7 +184,7 @@ const attackOptions = [
         distance: 3,
         x: canvas.width/2 - 50,
         abilityName: 'Pressure Stream',
-        abilityDescription: 'Shoot a stream of pressurized water.'
+        abilityDescription: 'Cannot mve while shooting.'
     },
     {
         name: 'Mandibles',
@@ -193,7 +194,7 @@ const attackOptions = [
         distance: 1,
         x: canvas.width - 200,
         abilityName: 'Bite',
-        abilityDescription: 'Attack with your mandibles.'
+        abilityDescription: 'Restores health on kill.'
     }
 ]
 
@@ -226,7 +227,7 @@ const moveOptions = [
         distance: 1,
         x: canvas.width - 200,
         abilityName: 'Side Roll',
-        abilityDescription: 'Spin to the side.'
+        abilityDescription: 'Rotate to the side.'
     }
 ]
 
@@ -280,18 +281,20 @@ function keyUpHandler(event) {
 }
 
 function mouseDownHandler(event) {
-    if (event.button === 0) {
-        if (filterMouth) {
-            acidBubbles();
-        
+    if (movementChosen) {
+        if (event.button === 0) {
+            if (filterMouth) {
+                acidBubbles();
+            
+            }
+            if (proboscusMouth) {
+                pressureStream();
+            }
+            if (mandibleMouth) {
+                biteAttack();
+            }
+            
         }
-        if (proboscusMouth) {
-            pressureStream();
-        }
-        if (mandibleMouth) {
-            return;
-        }
-        
     }
 }
 
@@ -316,6 +319,33 @@ function drawPause() {
         ctx.fillText('Game Paused', canvas.width / 2, canvas.height / 2);
         ctx.font = '24px Bagel Fat One';
         ctx.fillText(`press 'P' to unpause.`, canvas.width / 2, canvas.height / 2 + 48);
+    }
+}
+
+class targetReticle{
+    constructor(){
+        this.width = 20;
+        this.height = 20;
+        if (filterMouth) {
+            this.distance = bulletDistance;
+        } else if (proboscusMouth) {
+            this.distance = laserDistance;
+        } else if (mandibleMouth) {
+            this.distance = biteDistance;
+        }
+        this.x = (player.centerX + (Math.sin(player.angle) * this.distance)) - (this.width / 2)
+        this.y = (player.centerY - (Math.cos(player.angle) * this.distance)) - (this.height / 2)
+        this.angle = player.angle;
+        this.image = new Image();
+        this.image.src = 'target.png'
+    }
+    update(){
+        this.x = (player.centerX + (Math.sin(player.angle) * this.distance)) - (this.width / 2)
+        this.y = (player.centerY - (Math.cos(player.angle) * this.distance)) - (this.height / 2)
+        this.angle = player.angle;
+    }
+    draw(ctx){
+        ctx.drawImage(this.image, this.x, this.y, this.width, this.height);
     }
 }
 
@@ -384,7 +414,7 @@ class SelectionScreen{
         }
         const option = this.options[this.hoveredOption];
         ctx.fillStyle = '#ffffff65'
-        ctx.fillRect(option.x - 25, this.y + 120, this.size * 1.5, this.size)
+        ctx.fillRect(option.x - 75, this.y + 120, this.size * 2.5, this.size * 1.5)
         ctx.font = '18px Bagel Fat One';
         ctx.fillStyle = 'white';
         ctx.textAlign = 'center';
@@ -396,6 +426,8 @@ class SelectionScreen{
             ctx.fillText(`Turning: ${option.maneuverability}`, option.x + this.size / 2, this.y + 188);
         }
         ctx.fillText(`Distance: ${option.distance}`, option.x + this.size / 2, this.y + 212);
+        ctx.fillText(`Notes`, option.x + this.size / 2, this.y + 236);
+        ctx.fillText(option.abilityDescription, option.x + this.size / 2, this.y + 260);
     }
 }
 
@@ -458,13 +490,13 @@ class Player {
             gameState = 'gameOver';
         }
         //movement logic
-        if (rightPressed && !leftPressed) {
+        if (rightPressed && !leftPressed && !laserShot) {
             if (!finsChosen){
                 this.angle += turnSpeed;
             } else if (finsChosen){
                 this.angle += finTurnSpeed;
             }
-        } else if (leftPressed && !rightPressed) {
+        } else if (leftPressed && !rightPressed && !laserShot) {
             if (!finsChosen){
                 this.angle -= turnSpeed;
             } else if (finsChosen){
@@ -479,7 +511,7 @@ class Player {
         this.directionY = Math.sin(this.angle);
 
         
-        if (downPressed && jetChosen) {
+        if (downPressed && jetChosen && !laserShot) {
             if ((this.x - this.moveX) > 0 
             && (this.x - this.moveX) < canvas.width - this.width 
             && (this.y - this.moveY) > 0 
@@ -491,7 +523,7 @@ class Player {
             }
         } 
         
-        if (downPressed) {
+        if (downPressed && !laserShot) {
             if ((this.x - this.moveX) > 0 
             && (this.x - this.moveX) < canvas.width - this.width 
             && (this.y - this.moveY) > 0 
@@ -500,7 +532,7 @@ class Player {
                 this.x -= this.moveX;
                 this.centerX -= this.moveX;
                 this.centerY -= this.moveY;
-        }} else if (upPressed) {
+        }} else if (upPressed && !laserShot) {
             if ((this.x + this.moveX) > 0 
             && (this.x + this.moveX) < canvas.width - this.width 
             && (this.y + this.moveY) > 0 
@@ -512,7 +544,7 @@ class Player {
         }}
 
         //movement skill timing logic
-        if (jetChosen) {
+        if (jetChosen && !laserShot) {
             if (!canDash) {
                 if (performance.now() >= this.nextMoveTime){
                     canDash = true;
@@ -520,7 +552,7 @@ class Player {
             }
         }
 
-        if (finsChosen) {
+        if (finsChosen && !laserShot) {
             if (!canRoll) {
                 if (performance.now() >= this.nextMoveTime){
                     canRoll = true;
@@ -528,7 +560,7 @@ class Player {
             }
         }
 
-        if (flagellaChosen) {
+        if (flagellaChosen && !laserShot) {
             if (!canFlipTurn) {
                 if (performance.now() >= this.nextMoveTime){
                     canFlipTurn = true;
@@ -667,9 +699,18 @@ class Laser {
         console.log(this.dx, this.dy)
         this.currentDistance = Math.floor(Math.sqrt(this.dx * this.dx + this.dy * this.dy));
         console.log(this.currentDistance)
-        if (this.currentDistance >= this.distance) this.markedForDeletion = true
-        if (this.x < 0 - this.width || this.x > canvas.width - this.width) this.markedForDeletion = true;
-        if (this.y < 0 - this.height || this.y > canvas.height - this.height) this.markedForDeletion = true;
+        if (this.currentDistance >= this.distance) {
+            this.markedForDeletion = true;
+            laserShot = false;
+        }
+        if (this.x < 0 - this.width || this.x > canvas.width - this.width) {
+            this.markedForDeletion = true;
+            laserShot = false;
+        }
+        if (this.y < 0 - this.height || this.y > canvas.height - this.height) {
+            this.markedForDeletion = true;
+            laserShot = false;
+        }
     }
     draw(ctx){
         ctx.save();
@@ -688,6 +729,46 @@ class Laser {
         this.distanceX = Math.abs(this.x - this.startX);
         this.distanceY = Math.abs(this.y - this.startY);
 
+    }
+}
+
+class Bite {
+    constructor() {
+        this.type = 'bite';
+        this.width = 20;
+        this.height = 20;
+        this.damage = biteDamage;
+        this.x = player.centerX - this.width/2
+        this.y = player.centerY - this.height/2
+        this.moveSpeed = (3 * (currentLevel > 1 ? levelModifier : 1)) * biteSpeed;
+        this.radius = biteRadius;
+        this.image = new Image()
+        this.image.src = 'bite.png'
+        this.angle = player.angle;
+        this.moveX = player.moveX;
+        this.moveY = player.moveY;
+        this.distance = biteDistance;
+        this.markedForDeletion = false;
+        this.startX = player.centerX;
+        this.startY = player.centerY;
+        this.centerX = (this.x + this.width/2);
+        this.centerY = (this.y + this.height/2);
+        this.distanceX = Math.abs(this.x - this.startX);
+        this.distanceY = Math.abs(this.y - this.startY);
+    }
+    update(){
+        this.x += this.moveX * biteSpeed;
+        this.y += this.moveY * biteSpeed;
+        this.centerX = (this.x + this.width/2);
+        this.centerY = (this.y + this.height/2);
+        if (this.distanceX >= this.distance || this.distanceY >= this.distance) this.markedForDeletion = true
+        if (this.x < 0 - this.width || this.x > canvas.width - this.width) this.markedForDeletion = true;
+        if (this.y < 0 - this.height || this.y > canvas.height - this.height) this.markedForDeletion = true;
+    }
+    draw(ctx){
+        ctx.drawImage(this.image, this.x, this.y, this.width, this.height);
+        this.distanceX = Math.abs(this.x - this.startX);
+        this.distanceY = Math.abs(this.y - this.startY);
     }
 }
 
@@ -960,7 +1041,7 @@ class Enemy {
     }
     takeDamage(x, y, damage){
         if (this.isDamaged === true && proboscusMouth) return;
-        console.log('taken damage')
+        console.log('taken damage: ' + damage)
         this.health -= damage;
         this.hitTimer = this.flashDuration;
         let dx = x - this.centerX;
@@ -1009,11 +1090,9 @@ function pressureStream() {
             bullet.angle = lastAngle
             bullets.push(bullet)
             bullet.draw(ctx);
-            console.log(bullet.x)
         }
         laserStopTime = performance.now() + nextLaserTime;
         nextShootTime = performance.now() + laserCooldown;
-        laserShot = false;
         for (enemy of enemies) {
             enemy.isDamaged = false;
         }
@@ -1021,7 +1100,15 @@ function pressureStream() {
     }
 }
 
+function biteAttack() {
+    let bullet = new Bite;
+        bullets.push(bullet)
+        bullet.draw(ctx);
+        nextBiteTime = performance.now() + biteCooldown;
+}
+
 function triggerDash() {
+    if (laserShot) return
     if (canDash && jetChosen) {
         if (upPressed) {
             if ((player.x + player.moveX * dashDistance) > 0 
@@ -1090,77 +1177,75 @@ function triggerDash() {
     }
     if (canRoll && finsChosen) {
         if (upPressed) {
-            if ((player.x + player.moveX * rollDistance) > 0 
-                && (player.x + player.moveX * rollDistance) < canvas.width - player.width 
-                && (player.y + player.moveY * rollDistance) > 0 
-                && (player.y + player.moveY * rollDistance) < canvas.height - player.height) {
-                let pivotX = player.centerX + (Math.sin(player.angle) * rollPivotDistance);
-                let pivotY = player.centerY - (Math.cos(player.angle) * rollPivotDistance);
-                let dx = player.centerX - pivotX;
-                let dy = player.centerY - pivotY;
-                let distance = Math.floor(Math.sqrt(dx * dx + dy * dy));
-                if (distance === 0) return;
-                let towardX = dx / distance;
-                let towardY = dy / distance;
-                let newX = towardX * Math.cos(rollDistance) - towardY * Math.sin(rollDistance);
-                let newY = towardX * Math.sin(rollDistance) + towardY * Math.cos(rollDistance);
-                let playerX = pivotX + (newX * distance);
-                let playerY = pivotY + (newY * distance);
-                
+            let pivotX = player.centerX + (Math.sin(player.angle) * rollPivotDistance);
+            let pivotY = player.centerY - (Math.cos(player.angle) * rollPivotDistance);
+            let dx = player.centerX - pivotX;
+            let dy = player.centerY - pivotY;
+            let distance = Math.floor(Math.sqrt(dx * dx + dy * dy));
+            if (distance === 0) return;
+            let towardX = dx / distance;
+            let towardY = dy / distance;
+            let newX = towardX * Math.cos(-rollDistance) - towardY * Math.sin(-rollDistance);
+            let newY = towardX * Math.sin(-rollDistance) + towardY * Math.cos(-rollDistance);
+            let playerX = pivotX + (newX * distance);
+            let playerY = pivotY + (newY * distance);
+            if (playerX > player.width / 2
+                && playerX < canvas.width - player.width / 2
+                && playerY > player.height / 2
+                && playerY < canvas.height - player.height / 2) {
                 player.angle -= rollDistance;
-                player.centerX = (playerX + player.width) - 25;
-                player.centerY = (playerY + player.height) - 25;
-                player.x = playerX;
-                player.y = playerY;
+                player.centerX = playerX
+                player.centerY = playerY
+                player.x = playerX - player.width / 2;
+                player.y = playerY - player.height / 2;
                 
             }
         } else if (downPressed) {
-            if ((player.x - player.moveX * rollDistance) > 0 
-                && (player.x - player.moveX * rollDistance) < canvas.width - player.width 
-                && (player.y - player.moveY * rollDistance) > 0 
-                && (player.y - player.moveY * rollDistance) < canvas.height - player.height) {
-                let pivotX = player.centerX + (Math.sin(player.angle) * rollPivotDistance);
-                let pivotY = player.centerY - (Math.cos(player.angle) * rollPivotDistance);
-                let dx = player.centerX - pivotX;
-                let dy = player.centerY - pivotY;
-                let distance = Math.floor(Math.sqrt(dx * dx + dy * dy));
-                if (distance === 0) return;
-                let towardX = dx / distance;
-                let towardY = dy / distance;
-                let newX = towardX * Math.cos(rollDistance) - towardY * Math.sin(rollDistance);
-                let newY = towardX * Math.sin(rollDistance) + towardY * Math.cos(rollDistance);
-                let playerX = pivotX + (newX * distance);
-                let playerY = pivotY + (newY * distance);
-                
+            let pivotX = player.centerX + (Math.sin(player.angle) * rollPivotDistance);
+            let pivotY = player.centerY - (Math.cos(player.angle) * rollPivotDistance);
+            let dx = player.centerX - pivotX;
+            let dy = player.centerY - pivotY;
+            let distance = Math.floor(Math.sqrt(dx * dx + dy * dy));
+            if (distance === 0) return;
+            let towardX = dx / distance;
+            let towardY = dy / distance;
+            let newX = towardX * Math.cos(rollDistance) - towardY * Math.sin(rollDistance);
+            let newY = towardX * Math.sin(rollDistance) + towardY * Math.cos(rollDistance);
+            let playerX = pivotX + (newX * distance);
+            let playerY = pivotY + (newY * distance);
+            if (playerX > player.width / 2
+                && playerX < canvas.width - player.width / 2
+                && playerY > player.height / 2
+                && playerY < canvas.height - player.height / 2) {
                 player.angle += rollDistance;
-                player.centerX = (playerX + player.width) - 25;
-                player.centerY = (playerY + player.height) - 25;
-                player.x = playerX;
-                player.y = playerY;
+                player.centerX = playerX
+                player.centerY = playerY
+                player.x = playerX - player.width / 2;
+                player.y = playerY - player.height / 2;
             }
         } else {
-            if ((player.x + player.moveX * rollDistance) > 0 
-                && (player.x + player.moveX * rollDistance) < canvas.width - player.width 
-                && (player.y + player.moveY * rollDistance) > 0 
-                && (player.y + player.moveY * rollDistance) < canvas.height - player.height) {
-                let pivotX = player.centerX + (Math.sin(player.angle) * rollPivotDistance);
-                let pivotY = player.centerY - (Math.cos(player.angle) * rollPivotDistance);
-                let dx = player.centerX - pivotX;
-                let dy = player.centerY - pivotY;
-                let distance = Math.floor(Math.sqrt(dx * dx + dy * dy));
-                if (distance === 0) return;
-                let towardX = dx / distance;
-                let towardY = dy / distance;
-                let newX = towardX * Math.cos(rollDistance) - towardY * Math.sin(rollDistance);
-                let newY = towardX * Math.sin(rollDistance) + towardY * Math.cos(rollDistance);
-                let playerX = pivotX + (newX * distance);
-                let playerY = pivotY + (newY * distance);
+            let pivotX = player.centerX + (Math.sin(player.angle) * rollPivotDistance);
+            let pivotY = player.centerY - (Math.cos(player.angle) * rollPivotDistance);
+            let dx = player.centerX - pivotX;
+            let dy = player.centerY - pivotY;
+            let distance = Math.floor(Math.sqrt(dx * dx + dy * dy));
+            if (distance === 0) return;
+            let towardX = dx / distance;
+            let towardY = dy / distance;
+            let newX = towardX * Math.cos(-rollDistance) - towardY * Math.sin(-rollDistance);
+            let newY = towardX * Math.sin(-rollDistance) + towardY * Math.cos(-rollDistance);
+            let playerX = pivotX + (newX * distance);
+            let playerY = pivotY + (newY * distance);
+            if (playerX > player.width / 2
+                && playerX < canvas.width - player.width / 2
+                && playerY > player.height / 2
+                && playerY < canvas.height - player.height / 2) {
                 
                 player.angle -= rollDistance;
-                player.centerX = (playerX + player.width) - 25;
-                player.centerY = (playerY + player.height) - 25;
-                player.x = playerX;
-                player.y = playerY;
+                player.centerX = playerX
+                player.centerY = playerY
+                player.x = playerX - player.width / 2;
+                player.y = playerY - player.height / 2;
             }
         }
         canRoll = false;
@@ -1239,6 +1324,9 @@ function checkPlayerBullets(){
             if (bullet.type === 'laser' && distance < bullet.radius + bulletForgiveness) {
                 enemy.takeDamage(bullet.centerX, bullet.centerY, laserDamage);
             }
+            if (bullet.type === 'bite' && distance < bullet.radius + bulletForgiveness) {
+                enemy.takeDamage(bullet.centerX, bullet.centerY, biteDamage);
+            }
         }
     }
 }
@@ -1277,6 +1365,7 @@ function resetGame(){
     finsChosen = false;
     filterMouth = false;
     proboscusMouth = false;
+    laserShot = false;
     mandibleMouth = false;
     mouthSelect.hoveredOption = null;
     mouthSelect.selectedOption = null;
@@ -1372,6 +1461,7 @@ function drawUI(){
 }
 
 function waveCompleteTransition(){
+    laserShot = false;
     enemiesDefeated = 0;
     enemyBullets = [];
     currentWave += 1;
@@ -1423,8 +1513,9 @@ function updateAndDraw(){
             player.draw(ctx);
         }
         player.update();
-        ctx.fillStyle = 'white';
-        ctx.fillRect(player.centerX + (Math.sin(player.angle) * rollPivotDistance), player.centerY - (Math.cos(player.angle) * rollPivotDistance), 10, 10);
+        let target = new targetReticle()
+        target.update()
+        target.draw(ctx)
         bullets = bullets.filter(object => !object.markedForDeletion);
         enemyBullets = enemyBullets.filter(object => !object.markedForDeletion);
         enemies = enemies.filter(object => object.isAlive);
@@ -1527,7 +1618,7 @@ function initialize(){
         });
     } else if (mandibleMouth){
         shootIcon = new AbilityIcon(shootAbilityX, shootAbilityY, biteImage, () => {
-            return (nextShootTime - performance.now()) / biteCooldown;
+            return (nextBiteTime - performance.now()) / biteCooldown;
         });
     }
 }
