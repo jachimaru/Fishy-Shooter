@@ -16,7 +16,6 @@ canvas {
     opacity: 0;
 }
 #column {
-    grid: auto;
-    grid-template-columns: auto, auto;
-    grid-template-rows: auto;
+    display: flex;
+    flex-direction: row;
 }
