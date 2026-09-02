@@ -3,19 +3,40 @@ body {
     width: 100vw;
     height: 100vh;
     overflow: hidden;
+    position: relative;
+    margin-block: 20px;
+    margin-inline: 50%;
+    transform: translate(-25%);
 }
 canvas {
     background: #0e0430;
     border: solid #ffffff 5px;
     position: absolute;
-    top: 5%;
-    left: 50%;
-    transform: translate(-50%);
 }
 #collisionCanvas {
     opacity: 0;
 }
 #column {
-    display: flex;
-    flex-direction: row;
+    position: absolute;
+    top: 0%;
+    left: 0%;
+    
+}
+#controls {
+    color: #ffffff;
+    font-family: 'Bagel Fat One';
+    position: relative;
+    left: 850px;
+}
+#controls h1 {
+    font-size: 48px;
+}
+#controls h2 {
+    font-size: 36px;
+}
+#controls li {
+    font-size: 24px;
+    max-width: 450px;
+    white-space: normal;
+    overflow-wrap: break-word;
 }

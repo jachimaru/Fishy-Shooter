@@ -12,7 +12,7 @@ document.addEventListener("keyup", keyUpHandler);
 document.addEventListener('mousedown', mouseDownHandler);
 document.addEventListener('mouseup', mouseUpHandler);
 document.addEventListener('auxclick', mouseAuxHandler);
-document.addEventListener('mousemove', mouseMoveHandler);
+canvas.addEventListener('mousemove', mouseMoveHandler);
 document.addEventListener('click', mouseClickHandler);
 
 //level variables
@@ -38,7 +38,7 @@ let initializeGame = false;
 
 //ui variables
 let currentWave = 1;
-let wavesThisLevel = 3 + (currentLevel > 1 ? waveModifier : 0);
+let wavesThisLevel = Math.floor(3 + (currentLevel > 1 ? waveModifier : 0));
 let enemiesDefeated = 0;
 let enemiesThisWave = 5 + ((currentLevel - 1) * 0.25);
 let enemiesNextWave = Math.floor(enemiesThisWave * 1.2)
@@ -132,7 +132,7 @@ let biteDistance = 50;
 let biteDamage = 3;
 let biteSpawnTimer = null;
 let nextBiteTime = 0;
-let biteCooldown = 300;
+let biteCooldown = 600;
 
 //controls
 let moveRight = ['ArrowRight', 'KeyD'];
@@ -281,6 +281,7 @@ function keyUpHandler(event) {
 }
 
 function mouseDownHandler(event) {
+    event.preventDefault();
     if (movementChosen) {
         if (event.button === 0) {
             if (filterMouth) {
@@ -761,9 +762,18 @@ class Bite {
         this.y += this.moveY * biteSpeed;
         this.centerX = (this.x + this.width/2);
         this.centerY = (this.y + this.height/2);
-        if (this.distanceX >= this.distance || this.distanceY >= this.distance) this.markedForDeletion = true
-        if (this.x < 0 - this.width || this.x > canvas.width - this.width) this.markedForDeletion = true;
-        if (this.y < 0 - this.height || this.y > canvas.height - this.height) this.markedForDeletion = true;
+        if (this.distanceX >= this.distance || this.distanceY >= this.distance) {
+            this.markedForDeletion = true;
+            isInvuln = false;
+        }
+        if (this.x < 0 - this.width || this.x > canvas.width - this.width) {
+            this.markedForDeletion = true;
+            isInvuln = false;
+        }
+        if (this.y < 0 - this.height || this.y > canvas.height - this.height) {
+            this.markedForDeletion = true;
+            isInvuln = false;
+        }
     }
     draw(ctx){
         ctx.drawImage(this.image, this.x, this.y, this.width, this.height);
@@ -1039,10 +1049,11 @@ class Enemy {
         this.moveTowardPlayer();
         
     }
-    takeDamage(x, y, damage){
+    takeDamage(x, y, damage, type){
         if (this.isDamaged === true && proboscusMouth) return;
         console.log('taken damage: ' + damage)
         this.health -= damage;
+        if (type === 'bite' && this.health <= 0) playerHealth = Math.min(playerHealth + 1, Math.floor(10 * (currentLevel > 1 ? healthModifier : 1)))
         this.hitTimer = this.flashDuration;
         let dx = x - this.centerX;
         let dy = y - this.centerY;
@@ -1101,10 +1112,26 @@ function pressureStream() {
 }
 
 function biteAttack() {
-    let bullet = new Bite;
-        bullets.push(bullet)
-        bullet.draw(ctx);
-        nextBiteTime = performance.now() + biteCooldown;
+    if (performance.now() >= nextBiteTime) {
+        let pathX = Math.sin(player.angle) * biteDistance - 10;
+        let pathY = -Math.cos(player.angle) * biteDistance - 10;
+        if ((player.x + pathX) > 0 
+        && (player.x + pathX) < canvas.width - player.width 
+        && (player.y + pathY) > 0 
+        && (player.y + pathY) < canvas.height - player.height) {
+            let bullet = new Bite;
+                bullets.push(bullet)
+                bullet.draw(ctx);
+                nextBiteTime = performance.now() + biteCooldown;
+            isInvuln = true
+            player.moveX = Math.sin(player.angle) * biteDistance - 10;
+            player.moveY = -Math.cos(player.angle) * biteDistance - 10;
+            player.y += player.moveY;
+            player.x += player.moveX;
+            player.centerX += player.moveX;
+            player.centerY += player.moveY;
+        }
+    }
 }
 
 function triggerDash() {
@@ -1254,7 +1281,7 @@ function triggerDash() {
 }
 
 function mouseAuxHandler(event) {
-    console.log("CLICK", mouthSelect.hoveredOption);
+    event.preventDefault();
     if (dashButton.includes(event.code) || event.button === 1) {
         triggerDash();
     }
@@ -1317,15 +1344,15 @@ function checkPlayerBullets(){
             let dx = bullet.centerX - enemy.centerX;
             let dy = bullet.centerY - enemy.centerY;
             let distance = Math.floor(Math.sqrt(dx * dx + dy * dy));
-            if (bullet.type !== 'laser' && distance < bullet.radius + bulletForgiveness) {
+            if (bullet.type === 'bullet' && distance < bullet.radius + bulletForgiveness) {
                 bullet.markedForDeletion = true;
-                enemy.takeDamage(bullet.centerX, bullet.centerY, bulletDamage);
+                enemy.takeDamage(bullet.centerX, bullet.centerY, bulletDamage, bullet.type);
             }
             if (bullet.type === 'laser' && distance < bullet.radius + bulletForgiveness) {
-                enemy.takeDamage(bullet.centerX, bullet.centerY, laserDamage);
+                enemy.takeDamage(bullet.centerX, bullet.centerY, laserDamage, bullet.type);
             }
             if (bullet.type === 'bite' && distance < bullet.radius + bulletForgiveness) {
-                enemy.takeDamage(bullet.centerX, bullet.centerY, biteDamage);
+                enemy.takeDamage(bullet.centerX, bullet.centerY, biteDamage, bullet.type);
             }
         }
     }
@@ -1366,6 +1393,7 @@ function resetGame(){
     filterMouth = false;
     proboscusMouth = false;
     laserShot = false;
+    levelComplete = false;
     mandibleMouth = false;
     mouthSelect.hoveredOption = null;
     mouthSelect.selectedOption = null;
@@ -1477,9 +1505,10 @@ function goToNextLevel(){
     currentWave = 1;
     enemiesDefeated = 0;
     levelModifier = 1 + ((currentLevel - 1) * 0.25);
-    wavesThisLevel = 3 + (currentLevel > 1 ? waveModifier : 0)
+    wavesThisLevel = Math.floor(3 + (currentLevel > 1 ? waveModifier : 0))
     playerHealth = Math.floor(10 * (currentLevel > 1 ? healthModifier : 1));
     enemiesNextWave = Math.floor(enemiesThisWave * 1.2)
+    levelComplete = false;
     spawnStarted = false;
     timeToNextFrame = 0;
     lastTime = 0;
