@@ -35,6 +35,10 @@ let waveOverlayStart = 0
 let mouthChosen = false;
 let movementChosen = false;
 let initializeGame = false;
+let hitSFX = new Audio('assets/sfx/hit.wav');
+let selectSFX = new Audio('assets/sfx/select.wav');
+let cooldownSFX = new Audio('assets/sfx/cooldown.wav');
+let pauseSFX = new Audio('assets/sfx/pause.wav');
 
 //ui variables
 let currentWave = 1;
@@ -247,9 +251,12 @@ function keyDownHandler(event) {
     }
     if (event.code === pauseButton && !isPaused) {
         isPaused = true;
+        pauseSFX.play();
+        levelBGM.volume -= levelBGM.volume / 2;
         pauseStartTime = performance.now();
     } else if (event.code === pauseButton && isPaused) {
         isPaused = false;
+        levelBGM.volume += levelBGM.volume;
         let pauseDuration = performance.now() - pauseStartTime;
         player.nextMoveTime += pauseDuration;
         nextInvuln += pauseDuration;
@@ -549,6 +556,7 @@ class Player {
             if (!canDash) {
                 if (performance.now() >= this.nextMoveTime){
                     canDash = true;
+                    cooldownSFX.play();
                 }
             }
         }
@@ -557,6 +565,7 @@ class Player {
             if (!canRoll) {
                 if (performance.now() >= this.nextMoveTime){
                     canRoll = true;
+                    cooldownSFX.play();
                 }
             }
         }
@@ -565,6 +574,7 @@ class Player {
             if (!canFlipTurn) {
                 if (performance.now() >= this.nextMoveTime){
                     canFlipTurn = true;
+                    cooldownSFX.play();
                 }
             }
         }
@@ -582,6 +592,7 @@ class Player {
     takeDamage(x, y, damage) {
         if (isInvuln) return;
         playerHealth -= damage;
+        hitSFX.play();
         let dx = x - this.centerX;
         let dy = y - this.centerY;
         let distance = Math.floor(Math.sqrt(dx * dx + dy * dy));
@@ -941,6 +952,10 @@ class Enemy {
             if ((this.distance < 100 && this.type === 'normal') || (this.distance < 10 && this.type === 'barracuda')) {
                 this.inRange = false;
             } else if ((this.distance >= 100 && this.type === 'normal') || (this.distance >= 10 && this.type === 'barracuda')) {
+                if (this.type === 'barracuda') {
+                    let bulletSFX = new Audio('assets/sfx/barracuda.wav')
+                    bulletSFX.play();
+                }
                 this.x += this.towardX * this.moveSpeed;
                 this.y += this.towardY * this.moveSpeed;
                 this.centerX = (this.x + this.width) - 25;
@@ -960,6 +975,15 @@ class Enemy {
     }
     shootBullet(){
         this.turnTowardPlayer()
+        if (this.wavesFired === 0) {
+            if (this.type === 'normal') {
+                let bulletSFX = new Audio('assets/sfx/normal.wav')
+                bulletSFX.play();
+            } else if (this.type === 'puffer') {
+                let bulletSFX = new Audio('assets/sfx/puffer.wav')
+                bulletSFX.play();
+            }
+        }
         let dx = this.targetX - this.centerX;
         let dy = this.targetY - this.centerY;
         let angle = (Math.atan2(dy, dx))// + (Math.PI / 2);
@@ -978,6 +1002,7 @@ class Enemy {
                 let bullet = new EnemyBullet(this.centerX - 10, this.centerY - 10, this.bulletTravel, this.type, angle, this.towardX, this.towardY);
                 enemyBullets.push(bullet)
                 bullet.draw(ctx)
+                
             }
         }
         this.wavesFired += 1
@@ -1051,8 +1076,8 @@ class Enemy {
     }
     takeDamage(x, y, damage, type){
         if (this.isDamaged === true && proboscusMouth) return;
-        console.log('taken damage: ' + damage)
         this.health -= damage;
+        hitSFX.play();
         if (type === 'bite' && this.health <= 0) playerHealth = Math.min(playerHealth + 1, Math.floor(10 * (currentLevel > 1 ? healthModifier : 1)))
         this.hitTimer = this.flashDuration;
         let dx = x - this.centerX;
@@ -1078,6 +1103,8 @@ class Enemy {
 
 function acidBubbles() {
     if (performance.now() >= nextShootTime) {
+        let bubbleSFX = new Audio('assets/sfx/bubble.wav')
+        bubbleSFX.play();
         let bullet = new Bullet;
         bullets.push(bullet)
         bullet.draw(ctx);
@@ -1086,6 +1113,7 @@ function acidBubbles() {
             let bullet = new Bullet;
             bullets.push(bullet)
             bullet.draw(ctx);
+            bubbleSFX.play();
             nextShootTime = performance.now() + bulletCooldown;
         }, bulletCooldown)
     }
@@ -1094,6 +1122,8 @@ function acidBubbles() {
 function pressureStream() {
     if (performance.now() >= nextShootTime) {
         laserShot = true;
+        let laserSFX = new Audio('assets/sfx/laser.wav')
+        laserSFX.play();
         let lastAngle = player.angle
         let laserStopTime = 0;
         if (laserShot && laserStopTime <= laserDuration) {
@@ -1119,6 +1149,8 @@ function biteAttack() {
         && (player.x + pathX) < canvas.width - player.width 
         && (player.y + pathY) > 0 
         && (player.y + pathY) < canvas.height - player.height) {
+            let biteSFX = new Audio('assets/sfx/bite.wav')
+            biteSFX.play();
             let bullet = new Bite;
                 bullets.push(bullet)
                 bullet.draw(ctx);
@@ -1136,12 +1168,14 @@ function biteAttack() {
 
 function triggerDash() {
     if (laserShot) return
+    let dashSFX = new Audio('assets/sfx/dodge.wav')
     if (canDash && jetChosen) {
         if (upPressed) {
             if ((player.x + player.moveX * dashDistance) > 0 
                 && (player.x + player.moveX * dashDistance) < canvas.width - player.width 
                 && (player.y + player.moveY * dashDistance) > 0 
                 && (player.y + player.moveY * dashDistance) < canvas.height - player.height) {
+                dashSFX.play();
                 player.y += (player.moveY * dashModifier) * dashDistance;
                 player.x += (player.moveX * dashModifier) * dashDistance;
                 player.centerX += (player.moveX * dashModifier) * dashDistance;
@@ -1152,6 +1186,7 @@ function triggerDash() {
                 && (player.x - player.moveX * dashDistance) < canvas.width - player.width 
                 && (player.y - player.moveY * dashDistance) > 0 
                 && (player.y - player.moveY * dashDistance) < canvas.height - player.height) {
+                dashSFX.play();
                 player.y -= (player.moveY * dashModifier) * dashDistance;
                 player.x -= (player.moveX * dashModifier) * dashDistance;
                 player.centerX -= (player.moveX * dashModifier) * dashDistance;
@@ -1162,6 +1197,7 @@ function triggerDash() {
                 && (player.x + player.moveX * dashDistance) < canvas.width - player.width 
                 && (player.y + player.moveY * dashDistance) > 0 
                 && (player.y + player.moveY * dashDistance) < canvas.height - player.height) {
+                dashSFX.play();
                 player.y += (player.moveY * dashModifier) * dashDistance;
                 player.x += (player.moveX * dashModifier) * dashDistance;
                 player.centerX += (player.moveX * dashModifier) * dashDistance;
@@ -1177,6 +1213,7 @@ function triggerDash() {
                 && (player.x - player.moveX * flipDistance) < canvas.width - player.width 
                 && (player.y - player.moveY * flipDistance) > 0 
                 && (player.y - player.moveY * flipDistance) < canvas.height - player.height) {
+                dashSFX.play();
                 player.y -= (player.moveY * flipModifier) * flipDistance;
                 player.x -= (player.moveX * flipModifier) * flipDistance;
                 player.centerX -= (player.moveX * flipModifier) * flipDistance;
@@ -1190,6 +1227,7 @@ function triggerDash() {
                 && (player.x - player.moveX * flipDistance) < canvas.width - player.width 
                 && (player.y - player.moveY * flipDistance) > 0 
                 && (player.y - player.moveY * flipDistance) < canvas.height - player.height) {
+                dashSFX.play();
                 player.y -= (player.moveY * flipModifier) * flipDistance;
                 player.x -= (player.moveX * flipModifier) * flipDistance;
                 player.centerX -= (player.moveX * flipModifier) * flipDistance;
@@ -1220,6 +1258,7 @@ function triggerDash() {
                 && playerX < canvas.width - player.width / 2
                 && playerY > player.height / 2
                 && playerY < canvas.height - player.height / 2) {
+                dashSFX.play();
                 player.angle -= rollDistance;
                 player.centerX = playerX
                 player.centerY = playerY
@@ -1244,6 +1283,7 @@ function triggerDash() {
                 && playerX < canvas.width - player.width / 2
                 && playerY > player.height / 2
                 && playerY < canvas.height - player.height / 2) {
+                dashSFX.play();
                 player.angle += rollDistance;
                 player.centerX = playerX
                 player.centerY = playerY
@@ -1267,6 +1307,7 @@ function triggerDash() {
                 && playerX < canvas.width - player.width / 2
                 && playerY > player.height / 2
                 && playerY < canvas.height - player.height / 2) {
+                dashSFX.play();
                 
                 player.angle -= rollDistance;
                 player.centerX = playerX
@@ -1289,24 +1330,30 @@ function mouseAuxHandler(event) {
 
 function mouseClickHandler(event) {
     if (event.button === 0 && mouthSelect.hoveredOption === 0) {
+        selectSFX.play()
         filterMouth = true;
         mouthChosen = true;
     } else if (event.button === 0 && mouthSelect.hoveredOption === 1) {
+        selectSFX.play()
         proboscusMouth = true;
         mouthChosen = true;
     } else if (event.button === 0 && mouthSelect.hoveredOption === 2) {
+        selectSFX.play()
         mandibleMouth = true;
         mouthChosen = true;
     } 
     if (event.button === 0 && moveSelect.hoveredOption === 0) {
+        selectSFX.play()
         flagellaChosen = true;
         movementChosen = true;
         initializeGame = true;
     } else if (event.button === 0 && moveSelect.hoveredOption === 1) {
+        selectSFX.play()
         jetChosen = true;
         movementChosen = true;
         initializeGame = true;
     } else if (event.button === 0 && moveSelect.hoveredOption === 2) {
+        selectSFX.play()
         finsChosen = true;
         movementChosen = true;
         initializeGame = true;
@@ -1384,6 +1431,8 @@ function checkCollision(){
 }
 
 function resetGame(){
+    levelBGM.pause();
+    levelBGM.currentTime = 0;
     mouthChosen = false;
     movementChosen = false;
     initializeGame = false;
@@ -1583,6 +1632,7 @@ function updateAndDraw(){
 
 function animate(timestamp){
     if (!mouthChosen) {
+        startBGM.play()
         mouthSelect.draw();
         mouthSelect.update();
         requestAnimationFrame(animate);
@@ -1595,7 +1645,10 @@ function animate(timestamp){
         return;
     }
     if (initializeGame) {
+        startBGM.pause();
+        startBGM.currentTime = 0;
         initialize();
+        levelBGM.play();
         initializeGame = false;
     }
     if (isPaused) {
@@ -1651,5 +1704,8 @@ function initialize(){
         });
     }
 }
+
+let startBGM = new Audio('assets/bgm/Whale Waltz.wav')
+let levelBGM = new Audio('assets/bgm/Wire Wire Docks.wav')
 
 animate(0)
