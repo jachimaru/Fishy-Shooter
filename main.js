@@ -17,6 +17,7 @@ document.addEventListener('click', mouseClickHandler);
 
 //level variables
 let currentLevel = 1;
+let currentLevelBGM = Math.floor(Math.random() * 5) + 1;
 let levelModifier = 1 + ((currentLevel - 1) * 0.25);
 let waveModifier = 1.25
 
@@ -25,7 +26,7 @@ let timeToNextFrame = 0;
 let lastTime = 0;
 let randomX = Math.floor(Math.random() * (canvas.width - 50));
 let randomY = Math.floor(Math.random() * (canvas.height - 50));
-let gameState = 'playing' // playing, waveComplete, gameOver
+let gameState = 'starting' // starting, playing, waveComplete, gameOver
 let spawnStarted = false;
 let waveOverlayTimer = 3000;
 let countdownNumber = 3;
@@ -39,6 +40,7 @@ let hitSFX = new Audio('assets/sfx/hit.wav');
 let selectSFX = new Audio('assets/sfx/select.wav');
 let cooldownSFX = new Audio('assets/sfx/cooldown.wav');
 let pauseSFX = new Audio('assets/sfx/pause.wav');
+let gameoverBGM = new Audio(`assets/bgm/Crab's Diner.wav`)
 
 //ui variables
 let currentWave = 1;
@@ -268,8 +270,12 @@ function keyDownHandler(event) {
     }
     if (event.code === gameReset && gameState === 'gameOver'){
         resetGame();
+    } else if (event.code === gameReset && gameState === 'starting'){
+        gameState = 'playing';
     }
     if (event.code === gameReset && levelComplete) {
+        levelBGM.pause();
+        levelBGM.currentTime = 0;
         goToNextLevel();
     }
 }
@@ -787,7 +793,7 @@ class Bite {
         }
     }
     draw(ctx){
-        ctx.drawImage(this.image, this.x, this.y, this.width, this.height);
+        // ctx.drawImage(this.image, this.x, this.y, this.width, this.height);
         this.distanceX = Math.abs(this.x - this.startX);
         this.distanceY = Math.abs(this.y - this.startY);
     }
@@ -1357,7 +1363,7 @@ function mouseClickHandler(event) {
         finsChosen = true;
         movementChosen = true;
         initializeGame = true;
-    } 
+    }
 }
 
 function enemySpawner(){
@@ -1431,8 +1437,8 @@ function checkCollision(){
 }
 
 function resetGame(){
-    levelBGM.pause();
-    levelBGM.currentTime = 0;
+    gameoverBGM.pause();
+    gameoverBGM.currentTime = 0;
     mouthChosen = false;
     movementChosen = false;
     initializeGame = false;
@@ -1493,7 +1499,7 @@ function resetGame(){
     enemyMax = 3;
     enemiesSpawned = 0;
     player = new Player();
-    gameState = 'playing'
+    gameState = 'starting'
 }
 
 function drawUI(){
@@ -1551,6 +1557,7 @@ function waveCompleteTransition(){
 
 function goToNextLevel(){
     currentLevel += 1;
+    levelBGM = new Audio(`assets/bgm/level${currentLevelBGM}.wav`)
     currentWave = 1;
     enemiesDefeated = 0;
     levelModifier = 1 + ((currentLevel - 1) * 0.25);
@@ -1578,8 +1585,11 @@ function goToNextLevel(){
     gameState = 'playing'
 }
 
+let previousNumber = 0;
+
 function updateAndDraw(){
     if (gameState === 'playing') {
+        if (levelBGM.paused && !isPaused) levelBGM.play();
         [...bullets, ...enemyBullets, ...enemies].forEach(object => object.update());
         [...bullets, ...enemyBullets, ...enemies].forEach(object => object.draw(ctx));
         checkPlayerBullets();
@@ -1607,9 +1617,18 @@ function updateAndDraw(){
         }
     }
     if (gameState === 'waveComplete') {
+        levelBGM.pause();
+        levelBGM.currentTime = 0;
         countdownNumber = Math.ceil((waveCompleteEndTime - performance.now()) / 1000)
+        if (previousNumber !== countdownNumber) {
+            let countSFX = new Audio('assets/sfx/countdown.wav')
+            countSFX.play();
+            previousNumber = countdownNumber;
+        }
         if (performance.now() >= waveCompleteEndTime) {
             let waveDuration = performance.now() - waveOverlayStart;
+            let finishSFX = new Audio('assets/sfx/countdown finish.wav')
+            finishSFX.play();
             player.nextMoveTime = 0;
             nextInvuln = 0;
             enemies.forEach(enemy => {
@@ -1626,48 +1645,70 @@ function updateAndDraw(){
         }
     }
     if (gameState === 'gameOver') {
-        
+        levelBGM.pause();
+        levelBGM.currentTime = 0;
+        gameoverBGM.play();
     }
 }
 
-function animate(timestamp){
-    if (!mouthChosen) {
-        startBGM.play()
-        mouthSelect.draw();
-        mouthSelect.update();
-        requestAnimationFrame(animate);
-        return
-    }
-    if (!movementChosen) {
-        moveSelect.draw();
-        moveSelect.update();
-        requestAnimationFrame(animate);
-        return;
-    }
-    if (initializeGame) {
-        startBGM.pause();
-        startBGM.currentTime = 0;
-        initialize();
-        levelBGM.play();
-        initializeGame = false;
-    }
-    if (isPaused) {
-        drawUI();
-        requestAnimationFrame(animate);
-        return;
-    }
+function drawStartScreen() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    if (gameState === 'playing') {
-        let deltatime = timestamp - lastTime;
-        lastTime = timestamp;
-        timeToNextFrame += deltatime;
-        if (timeToNextFrame > spawnTimer){
-            enemySpawner();
-            timeToNextFrame = 0;
+    ctx.font = '64px Bagel Fat One';
+    ctx.fillStyle = 'white';
+    ctx.textAlign = 'center';
+    ctx.fillText('FISHY SHOOTER', canvas.width / 2, 64);
+    ctx.font = '48px Bagel Fat One';
+    ctx.fillText(`Press Enter to start game.`, canvas.width / 2, canvas.height / 2 + 48);
+    player.draw(ctx);
+    player.update();
+}
+
+function animate(timestamp){
+    if (gameState === 'starting') {
+        startBGM.play();
+        drawStartScreen();
+    } else {
+        if (!mouthChosen) {
+            mouthSelect.draw();
+            mouthSelect.update();
+            requestAnimationFrame(animate);
+            return
         }
+        if (!movementChosen) {
+            mouthSelect.hoveredOption = null;
+            moveSelect.draw();
+            moveSelect.update();
+            requestAnimationFrame(animate);
+            return;
+        }
+        if (initializeGame) {
+            moveSelect.hoveredOption = null;
+            startBGM.pause();
+            startBGM.currentTime = 0;
+            initialize();
+            levelBGM.play();
+            gameState = 'playing';
+            initializeGame = false;
+        }
+        if (isPaused) {
+            drawUI();
+            requestAnimationFrame(animate);
+            return;
+        }
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        if (gameState === 'playing') {
+            let deltatime = timestamp - lastTime;
+            lastTime = timestamp;
+            timeToNextFrame += deltatime;
+            if (timeToNextFrame > spawnTimer){
+                enemySpawner();
+                timeToNextFrame = 0;
+            }
+        }
+        updateAndDraw();
+        drawUI();
     }
-    updateAndDraw();
-    drawUI();
+    
     requestAnimationFrame(animate);
     
 }
@@ -1703,9 +1744,19 @@ function initialize(){
             return (nextBiteTime - performance.now()) / biteCooldown;
         });
     }
+    player.x = startingX;
+    player.y = startingY;
+    player.angle = angle;
+    player.directionX = Math.cos(player.angle);
+    player.directionY = Math.sin(player.angle);
+    player.centerX = (player.x + player.width) - 25
+    player.centerY = (player.y + player.height) - 25
+    player.moveX = Math.cos(player.angle) * moveSpeed;
+    player.moveY = Math.sin(player.angle) * moveSpeed;
+    player.nextMoveTime = 0;
 }
 
 let startBGM = new Audio('assets/bgm/Whale Waltz.wav')
-let levelBGM = new Audio('assets/bgm/Wire Wire Docks.wav')
+let levelBGM = new Audio(`assets/bgm/level1.wav`)
 
 animate(0)
