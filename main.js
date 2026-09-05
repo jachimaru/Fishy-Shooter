@@ -1446,7 +1446,7 @@ function resetGame(){
     jetChosen = false;
     flagellaChosen = false;
     finsChosen = false;
-    filterMouth = false;
+    filterMouth = true;
     proboscusMouth = false;
     laserShot = false;
     levelComplete = false;
