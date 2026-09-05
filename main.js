@@ -108,7 +108,7 @@ let angle = 0;
 let turnSpeed = 0.05;
 
 //player bullet variables
-let filterMouth = false;
+let filterMouth = true;
 let bulletSpeed = 1.75;
 let bulletRadius = 20;
 let bulletDistance = 200;
@@ -271,6 +271,7 @@ function keyDownHandler(event) {
     if (event.code === gameReset && gameState === 'gameOver'){
         resetGame();
     } else if (event.code === gameReset && gameState === 'starting'){
+        filterMouth = false;
         gameState = 'playing';
     }
     if (event.code === gameReset && levelComplete) {
@@ -295,7 +296,7 @@ function keyUpHandler(event) {
 
 function mouseDownHandler(event) {
     event.preventDefault();
-    if (movementChosen) {
+    if (movementChosen || gameState === 'starting') {
         if (event.button === 0) {
             if (filterMouth) {
                 acidBubbles();
@@ -1661,6 +1662,8 @@ function drawStartScreen() {
     ctx.fillText(`Press Enter to start game.`, canvas.width / 2, canvas.height / 2 + 48);
     player.draw(ctx);
     player.update();
+    [...bullets].forEach(object => object.update());
+    [...bullets].forEach(object => object.draw(ctx));
 }
 
 function animate(timestamp){
