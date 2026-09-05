@@ -598,7 +598,7 @@ class Player {
     }
     takeDamage(x, y, damage) {
         if (isInvuln) return;
-        playerHealth -= damage;
+        playerHealth -= Math.floor(damage);
         hitSFX.play();
         let dx = x - this.centerX;
         let dy = y - this.centerY;
@@ -1083,7 +1083,7 @@ class Enemy {
     }
     takeDamage(x, y, damage, type){
         if (this.isDamaged === true && proboscusMouth) return;
-        this.health -= damage;
+        this.health -= Math.ceil(damage);
         hitSFX.play();
         if (type === 'bite' && this.health <= 0) playerHealth = Math.min(playerHealth + 1, Math.floor(10 * (currentLevel > 1 ? healthModifier : 1)))
         this.hitTimer = this.flashDuration;
